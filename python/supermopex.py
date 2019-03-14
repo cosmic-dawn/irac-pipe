@@ -161,11 +161,3 @@ LogItems=("Filename","Instrument","Channel","AOR","DCE","FrameNumber","ObsType",
 WISEchannel=["w1","w2","w2","w2"]
 WISEratio=[0.8924,1.075,0.7832,0.4884]
 WISEratioCut=5  # cut stars with ratios bellow and +1 above this
-
-# nodes and NPROC for build_mosaic to use for large runs- AMo 22.dec
-# best for ch1:  n05 / 22  ### n05 w/400GB of mem
-# best for ch2:  n04 / 22  ### n04 w/200GB of mem
-#MosaicNODE = ["n05","n04","n13","@NODE@"]  # for chans 1/2/3/4
-
-# and for test runs (uncomment when needed):
-MosaicNODE = ["n01","n02","n08","n09"]  # for chans 1/2/3/4
