@@ -1060,7 +1060,8 @@ def run_mosaic_geometry(JobNo,JobList):
     geomlist = processTMPDIR + 'geom_' + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     
     #Run Mosaic
-    cmd = 'mosaic.pl -n ' + IRACMosaicGeomConfig + ' -I ' + imagelist + ' -F' + JobList['FIF'][JobNo] + ' -O ' + processTMPDIR + ' > /dev/null 2>&1'
+    cmd = 'mosaic.pl -n ' + IRACMosaicGeomConfig + ' -I ' + imagelist + ' -F' + JobList['FIF'][JobNo] + ' -O ' + processTMPDIR + ' > setup_mosaic_tiles.log 2>&1' #/dev/null 2>&1'
+    print(cmd)
     os.system(cmd)
     
     #count the number of files in mosaic geometry
@@ -1088,7 +1089,8 @@ def make_mosaic(JobNo,JobList):
     unclist   = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + ScaledUncSuffix + '.lst'
     
     #Run Mosaic
-    cmd = 'mosaic.pl -n ' + IRACMosaicConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' + processTMPDIR + ' > /dev/null 2>&1'
+    cmd = 'mosaic.pl -n ' + IRACMosaicConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' + processTMPDIR + ' > make_mosaic_'+str(JobNo)+'.log 2>&1 ' # /dev/null 2>&1'
+    print(cmd)
     os.system(cmd)
     
     #move the files
