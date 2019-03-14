@@ -111,9 +111,9 @@ chk_prev() {  # check given step is done (presence of .out file)
 }
 
 write_module() {  # write local verions of py and sh modules
-	comm="rsync -au $SLSdir/$module.py ."; ec $comm; $comm
+	comm="rsync -au $SLSdir/$module.py ."; ec "$comm"; $comm
 	fn=$SLSdir/${module%.py}_function.py
-	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec $comm; $comm; fi
+	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
 	info="for $WRK, built $(date +%d.%h.%y\ %T)"
 	sed -e "s|@NPROC@|$Nproc|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
 		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|"  $SLSdir/$module.sh > ./$module.sh
@@ -241,8 +241,8 @@ echo " |-------  End parameter check  ------------------------"
 echo ""
 
 # python processing scripts are copied when needed.  Here copy the flunctions library
-comm="rsync -a $SLSdir/spitzer_pipeline_functions.py $WRK"
-ec $comm; $comm
+comm="rsync -a $SLSdir/spitzer_pipeline_functions.py ."
+ec "$comm"; $comm
 
 if [ $1 == "pars" ]	 || [ $1 == "env" ]	 || [ $NAORs -eq 0 ]; then
 	exit 0		 # quit here ...
@@ -322,7 +322,7 @@ if [ $1 == "catals" ] || [ $auto == "T" ]; then
 	ec "# >>>>  2. Get catalogues  <<<<"
 	ec "#-----------------------------------------------------------------------------"
 
-	cp $SLSdir/${module}.py .
+	comm="rsync -au $SLSdir/$module.py ."; ec "$comm"; $comm
 	if [ $(hostname) == "candid01.iap.fr" ]; then
 		echo "# Running ${module}.py on login node" > ${module}.out
 		echo "" >> ${module}.out
@@ -472,16 +472,109 @@ if [ $1 == "submeds" ] || [ $auto == "T" ]; then
 
 	write_module; chk_outputs
 	ec "# Pruge lists of AOR/ch with no valid files "
-#	purgeLists.sh | tee -a $pipelog
 
 	end_step
 fi
 
 #-----------------------------------------------------------------------------
-### - 10. mosaic:    make_mosaics
+### - 10. tiles:     setup_mosaic_tiles
+#-----------------------------------------------------------------------------
+
+if [[ $1 =~ "tiles" ]] || [ $auto == "T" ]; then
+
+	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	chk_prev subtract_medians
+	module=setup_mosaic_tiles
+
+	ec "#-----------------------------------------------------------------------------"
+	ec "# >>>>  10. Setup tiles for mosaics    <<<<"
+	ec "#-----------------------------------------------------------------------------"
+
+	write_module; chk_outputs
+	end_step
+fi
+
+#-----------------------------------------------------------------------------
+### - 11. mosaic:    make_mosaics
 #-----------------------------------------------------------------------------
 
 if [ $1 == "mosaic" ] || [ $auto == "T" ]; then
+
+	module=make_tile
+	rm -f build.tiles make_tile_*.sh
+	comm="rsync -au $SLSdir/$module.py ."; ec "$comm"; $comm
+
+	# Find number of jobs:
+	odir=$(grep '^OutputDIR '   $pars | cut -d\' -f2 | tr -d \/)
+	PID=$(grep  '^PIDname '     $pars | cut -d\' -f2)
+	tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) #; echo "$PID, $tlf"; exit
+	tlf=$odir/${PID}$tlf                              #; echo "$PID, $tlf"
+	njobs=$(cat $tlf | grep $PID | wc -l)
+	echo "$tlf, which has $njobs jobs"
+
+	for j in $(seq 0 $(($njobs-1))); do
+#	for j in $(seq 22 25); do    # for testing
+		outmodule=${module}_$j.sh
+		info="for $WRK, built $(date +%d.%h.%y\ %T)"
+		sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|"  -e "s|@PID@|$PID|" \
+			-e "s|@JOB@|$j|"   $SLSdir/${module}.sh > $outmodule
+		chmod 755 $outmodule
+		echo "wrote $outmodule" | tee -a $pipelog
+		echo "qsub $outmodule; sleep 1" >> build.tiles
+	done
+
+	if [ $dry == "T" ]; then ec "----  EXITING PIPELINE DRY MODE	 ---- "; exit 10; fi
+
+	nsub=$(cat build.tiles | wc -l)
+	ec "# Submit $nsub ${module}_nn files ... " ; source build.tiles | tee -a $pipelog
+
+	# wait loop
+	ec "--  Wait for ${module}_ch? to finish  --"; sleep 20
+	while :; do 
+		ndone=$(ls ${module}_*.out 2> /dev/null | wc -l)
+		[ $ndone -eq $nsub ] && break
+		sleep 30
+	done
+	chmod 644 ${module}_*.out
+	for f in ${module}_*.out; do
+		ec "# Job $f finished - $(grep RESOURCESUSED $f | cut -d\, -f4)"
+	done
+
+	ec "# Check results ..."
+	# 1. check torque exit status
+	grep EXIT\ STATUS ${module}_*.out > estats.txt
+	nbad=$(grep -v STATUS:\ 0  estats.txt | wc -l)	# files w/ status != 0
+	if [ $nbad -gt 0 ]; then
+		ec "PROBLEM: $module_nn.sh exit status not 0: "
+		grep -v STATUS:\ 0 estats.txt ; askuser
+	else
+		ec "# ==> torque exit status ok;"; rm -f estats.txt
+	fi
+
+	# 2. check .log files (from mopex) for other errors
+	errfile=$module.err
+	grep -i -e Error -e Exception -e MALLOC ${module}_*.log > $errfile
+	grep ^System\ Exit  ${module}_*.log | grep -v ' 0' >> $errfile
+	nerr=$(cat $errfile | wc -l)
+	if [ $nerr -gt 0 ]; then
+		ec "PROBLEM: found $nerr errors in .log files ... check file $errfile"
+		head -6 $errfile ; askuser
+	else
+		ec "# ==> no other errors found ... continue "; rm -f $errfile 
+	fi
+
+	end_step
+
+	exit 0
+fi
+
+
+
+#-----------------------------------------------------------------------------
+### - 21. mosaic:    make_mosaics ... old style
+#-----------------------------------------------------------------------------
+
+if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	chk_prev subtract_medians
