@@ -45,11 +45,6 @@ MosaicTileSize = 512
 MosaicEdge     = 12       # number of pixels to add to edge of overall mosaic
 TileListFile   = OutputDIR + PIDname + '.mosaic_tile_list.tbl'
 
-# Mosaic Configuration File
-IRACMosaicGeomConfig = 'mosaic_geom.nl'
-IRACMosaicConfig     = 'mosaic_par.nl'
-#MosaicConfigFile = RootDIR + '/cdf/mosaic.pnl'
-
 # Input Star Catalogs
 WiseTable = OutputDIR + 'wise.tbl'
 GaiaTable = OutputDIR + 'gaia.tbl'
@@ -65,10 +60,11 @@ BrightStar = 16              # clip at brighter than this mag in wise 1,2,3
 BrightStarCat = OutputDIR + 'bright_stars.tbl'  # used for star subtraction
 StarTable = GaiaStarTable                         # use this for astrometry
 
-#mosaic configuration files
-IRACMosaicConfig = 'mosaic_FF.nl'
-# AMo Jan.19: Now hard-coded in build_mosaic.py: 
-# beginMosaic.nl and finishMosaic.nl for parts 1 & 2 repsectively
+# Mosaic configuration files - for building tiles
+IRACMosaicGeomConfig = 'mosaic_geom.nl'
+IRACMosaicConfig     = 'mosaic_par.nl'
+# and for "old style" version
+#IRACMosaicConfig = 'mosaic_FF.nl'   
 
 #Catalog of refined star positions and fluxes from mergestars
 RefinedStarCat = OutputDIR + 'stars.refined.tbl'
