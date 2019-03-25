@@ -3,7 +3,7 @@
 #PBS -N merge_@PID@
 #PBS -o merge_stars.out
 #PBS -j oe
-#PBS -l nodes=@NODE@:ppn=@NPROC@,walltime=12:00:00
+#PBS -l nodes=@NODE@:ppn=@NPROC@,walltime=24:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     merge_stars.sh @INFO@

@@ -3,7 +3,7 @@
 #PBS -N substars_@PID@
 #PBS -o subtract_stars.out
 #PBS -j oe
-#PBS -l nodes=@NODE@:ppn=@NPROC@,walltime=48:00:00
+#PBS -l nodes=@NODE@:ppn=@NPROC@,walltime=90:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     subtract_stars.sh @INFO@

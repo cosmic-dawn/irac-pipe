@@ -177,3 +177,6 @@ cosmos155.irac.1.mosaic_scamp.log ----- 131 detections loaded
 cosmos155.irac.2.mosaic_scamp.log ----- 10 detections loaded
 cosmos155.irac.3.mosaic_scamp.log ----- 19 detections loaded
 cosmos155.irac.4.mosaic_scamp.log ----- 156 detections loaded
+
+nn=$(grep mini make_tile.err|tr '.' ' '|tr \_ \  | cut -d\  -f3|sort -n )
+for j in $nn; do echo -n "$j "; sed "$(($j+4))q;d" Products/mini.mosaic_tile_list.tbl; done

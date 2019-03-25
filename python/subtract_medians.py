@@ -34,6 +34,3 @@ results = pool.map(run_subtractmedians, range(0,Njobs))
 
 print("Done!")
 
-#for i in range(0,Nrows):
-#findstar(5,log=log,Nrows=Nrows,BrightStars=BrightStars,AstrometryStars=AstrometryStars)
-#        print str(i+1) + ' of ' + str(Nrows)

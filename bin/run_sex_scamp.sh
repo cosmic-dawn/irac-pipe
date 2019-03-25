@@ -17,12 +17,11 @@ para=$confdir/photom_scamp.param
 
 pars=supermopex.py
 wdir=$(grep '^RootDIR '    $pars | cut -d\' -f2 )
-odir=Run1  #$(grep '^OutputDIR '  $pars | cut -d\' -f2 | tr -d \/)
+odir=$(grep '^OutputDIR '  $pars | cut -d\' -f2 | tr -d \/)
 PID=$(grep  '^PIDname '    $pars | cut -d\' -f2)
 
 echo $wdir/$odir
 echo $PID
-
 
 cd $wdir/$odir; echo " --> $PWD"
 
@@ -83,24 +82,21 @@ for ima in $(ls ${PID}.irac.?.mosaic.fits); do
     # scamp
     #-----------------------------------------------------------------------------
 
-	# basic params
-	if [ $solve -ne 1 ]; then      # for simple matching
-		args=" -c $confdir/scamp.conf  -SOLVE_ASTROM N  -SOLVE_PHOTOM N  -MATCH N"
-	else 	# with solution
-		args=" -c $confdir/scamp.conf  -SOLVE_ASTROM Y  -SOLVE_PHOTOM N  -MATCH Y  -DISTORT_DEGREES 1"
-	fi
-
 	# remote or local reference catalogue
 	if [[ $(hostname) =~ "candid" ]]; then
 		extras="-ASTREF_CATALOG GAIA-DR1  -SAVE_REFCATALOG Y "     # external ref. catal.
 	else
-		#extras="-ASTREF_CATALOG FILE  -ASTREFCAT_NAME $confdir/GAIA-DR1_1000+0214_r64.cat "
 		extras="-ASTREF_CATALOG FILE  -ASTREFCAT_NAME $confdir/GAIA-DR1_1000+0211_r76.cat "
-		#echo -n ">> ref. catal:    "; ls -lh GAIA-DR1_1000+0214_r64.cat  | tr -s ' ' | cut -d\  -f9-19
+	fi
+
+	# match / solve astrometry params
+	if [ $solve -ne 1 ]; then      # for simple matching
+		args=" -c $confdir/scamp.conf  -MATCH N  -SOLVE_ASTROM N  -SOLVE_PHOTOM N"
+	else 	# with solution
+		args=" -c $confdir/scamp.conf  -MATCH Y  -SOLVE_ASTROM Y  -SOLVE_PHOTOM N  -DISTORT_DEGREES 1"
 	fi
 
 	echo "-----------------------------------------------------------------------------"
-#	echo -n ">>>> Scamp for irac on "; ls -lh $cat | tr -s ' ' | cut -d\  -f9-19
 	echo ">>>> Scamp for irac on $cat"
 	echo "-----------------------------------------------------------------------------"
 	echo    ">> input catal:   $cat"
@@ -123,6 +119,13 @@ for ima in $(ls ${PID}.irac.?.mosaic.fits); do
 		echo "" ; [ -e $rms ] && exit
 	fi
 done
+
+echo " scamp Astrom detections:"
+for f in *scamp.log; do echo "$f $(grep detections\ load $f)"; done
+
+echo " scamp Astrom stats:"
+grep -A2 external cos45.irac.?.mosaic_scamp.log | grep Group
+
 exit 0
 
 #grep ^Group  subaru_*_scamp*.log | grep -v \ 0\  

@@ -105,15 +105,17 @@ askuser() {  # ask user if ok to continue
 
 chk_prev() {  # check given step is done (presence of .out file)
 	if [ ! -e $1.out ]; then 
-	ec "ERROR: $1.out not found ... previous step not complete? "
-	askuser
+		ec "ERROR: $1.out not found ... previous step not complete? "
+		askuser
 	fi
-}
-
-write_module() {  # write local verions of py and sh modules
+	# copy python scripts to work dir
+	xdone=T
 	comm="rsync -au $SLSdir/$module.py ."; ec "$comm"; $comm
 	fn=$SLSdir/${module%.py}_function.py
 	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
+}
+
+write_module() {  # write local verions of py and sh modules
 	info="for $WRK, built $(date +%d.%h.%y\ %T)"
 	sed -e "s|@NPROC@|$Nproc|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
 		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|"  $SLSdir/$module.sh > ./$module.sh
@@ -174,6 +176,7 @@ echo "PYTHONPATH:  $PYTHONPATH"
 
 dry=F     # dry mode - do nothing
 auto=F    # auto-continue defined at each step
+xdone=F
 if [ "${@: -1}" == 'dry' ] || [ "${@: -1}" == 'test' ]; then dry=T; fi
 
 #-----------------------------------------------------------------------------
@@ -315,8 +318,8 @@ fi
 if [ $1 == "catals" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	chk_prev setup_pipeline
 	module=get_catalogs 
+	chk_prev setup_pipeline
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  2. Get catalogues  <<<<"
@@ -354,8 +357,8 @@ fi
 if [ $1 == "ffcorr" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	chk_prev get_catalogs
 	module=first_frame_corr
+	chk_prev get_catalogs
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  3. First frame correction  <<<<"
@@ -372,9 +375,9 @@ fi
 if [ $1 == "find" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	module=find_stars
 	chk_prev first_frame_corr
 
-	module=find_stars
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  4. Find stars  <<<<"
 	ec "#-----------------------------------------------------------------------------"
@@ -391,9 +394,9 @@ fi
 if [ $1 == "merge" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	module=merge_stars
 	chk_prev find_stars
 
-	module=merge_stars
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  5. Merge stars  <<<<"
 	ec "#-----------------------------------------------------------------------------"
@@ -408,9 +411,9 @@ fi
 if [ $1 == "substars" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	module=subtract_stars
 	chk_prev merge_stars
 
-	module=subtract_stars
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  6. Subtract stars  <<<<"
 	ec "#-----------------------------------------------------------------------------"
@@ -425,9 +428,9 @@ fi
 if [ $1 == "medians" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	module=make_medians
 	chk_prev subtract_stars
 
-	module=make_medians
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  7. Make medians   <<<<"
 	ec "#-----------------------------------------------------------------------------"
@@ -446,8 +449,8 @@ fi
 if [ $1 == "astrom" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	chk_prev make_medians
 	module=fix_astrometry
+	chk_prev make_medians
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  8. Fix astrometry   <<<<"
@@ -463,8 +466,8 @@ fi
 if [ $1 == "submeds" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	chk_prev fix_astrometry
 	module=subtract_medians
+	chk_prev fix_astrometry
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  9. Subtract medians    <<<<"
@@ -477,40 +480,81 @@ if [ $1 == "submeds" ] || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### - 10. tiles:     setup_mosaic_tiles
+### - 10. check stars:  check_stars      (optional; not yet implemented)
+#-----------------------------------------------------------------------------
+
+if [[ $1 =~ "check_stars" ]] || [ $auto == "T" ]; then
+
+	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	module=check_stars
+	chk_prev subtract_medians
+
+	ec "#-----------------------------------------------------------------------------"
+	ec "# >>>>  10. Check stars   <<<<"
+	ec "#       !!!!   NOT YET IMPLEMENTED  !!!  "
+	ec "#-----------------------------------------------------------------------------"
+	echo "command is:"
+	echo "  python check_stars.py"
+fi
+
+#-----------------------------------------------------------------------------
+### - 11. check_astro:  check_astrometry (optional; not yet implemented)
+#-----------------------------------------------------------------------------
+
+if [[ $1 =~ "check_astro" ]] || [ $auto == "T" ]; then
+
+	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	module=check_astrometry
+	chk_prev subtract_medians
+
+	ec "#-----------------------------------------------------------------------------"
+	ec "# >>>>  12. Check astrometry   <<<<"
+	ec "#       !!!!   NOT YET IMPLEMENTED  !!!  "
+	ec "#-----------------------------------------------------------------------------"
+	
+	echo "command is:"
+	echo "  python check_astrometry.py"
+fi
+
+#-----------------------------------------------------------------------------
+### - 12. tiles:     setup_tiles
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "tiles" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	module=setup_tiles
 	chk_prev subtract_medians
-	module=setup_mosaic_tiles
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  10. Setup tiles for mosaics    <<<<"
-	ec "#-----------------------------------------------------------------------------"
+	#ec "#-----------------------------------------------------------------------------"
 
 	write_module; chk_outputs
 	end_step
 fi
 
 #-----------------------------------------------------------------------------
-### - 11. mosaic:    make_mosaics
+### - 13. mosaic:    make_tiles
 #-----------------------------------------------------------------------------
 
 if [ $1 == "mosaic" ] || [ $auto == "T" ]; then
 
 	module=make_tile
+	chk_prev setup_tiles
+
 	rm -f build.tiles make_tile_*.sh
 	comm="rsync -au $SLSdir/$module.py ."; ec "$comm"; $comm
 
 	# Find number of jobs:
-	odir=$(grep '^OutputDIR '   $pars | cut -d\' -f2 | tr -d \/)
-	PID=$(grep  '^PIDname '     $pars | cut -d\' -f2)
+	#odir=$(grep '^OutputDIR '   $pars | cut -d\' -f2 | tr -d \/)
+	#PID=$(grep  '^PIDname '     $pars | cut -d\' -f2)
+	parfile=$(grep  '^IRACMosaicConfig '     $pars | cut -d\' -f2)
 	tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) #; echo "$PID, $tlf"; exit
 	tlf=$odir/${PID}$tlf                              #; echo "$PID, $tlf"
 	njobs=$(cat $tlf | grep $PID | wc -l)
-	echo "$tlf, which has $njobs jobs"
+	ec "# Mosaic config file: $parfile"
+	ec "# Mosaic tile list:   $tlf, with $njobs jobs"
 
 	for j in $(seq 0 $(($njobs-1))); do
 #	for j in $(seq 22 25); do    # for testing
@@ -565,10 +609,27 @@ if [ $1 == "mosaic" ] || [ $auto == "T" ]; then
 
 	end_step
 
-	exit 0
+#	exit 0
+fi
+
+#-----------------------------------------------------------------------------
+### - 14. mosaic:    combine_tiles
+#-----------------------------------------------------------------------------
+
+if [ $1 == "combTiles" ] || [ $auto == "T" ]; then
+
+	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	#chk_prev make_tile
+
+	ec "#-----------------------------------------------------------------------------"
+	ec "# >>>>  14. Combine tiles into mosaic   <<<<"
+	ec "#       !!!!   NOT YET IMPLEMENTED  !!!  "
+	ec "#-----------------------------------------------------------------------------"
+	
 fi
 
 
+#=============================================================================
 
 #-----------------------------------------------------------------------------
 ### - 21. mosaic:    make_mosaics ... old style
@@ -577,6 +638,7 @@ fi
 if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	module=prep_mosaic
 	chk_prev subtract_medians
 
 	ec "#-----------------------------------------------------------------------------"
@@ -617,7 +679,7 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 	doFull=1
 	if [ $doFull -eq 1 ]; then
 		ec "#####    do full build   #####"
-		sed -i 's/beginMosaic/mosaic_FF/' build_mosaic.py 
+		sed -i 's/beginMosaic/mosaic_FF/' $module.py 
 	fi
 	ecn "# namelist to begin mosaics is: "
 	grep 'cmd = ' build_mosaic.py | tr -s ' ' | cut -d\  -f6,6
@@ -705,7 +767,7 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### - 11. finish:    finish_mosaics
+### - 22. finish:    finish_mosaics
 #-----------------------------------------------------------------------------
 
 if [ $1 == "finish" ] || [ $auto == "T" ]; then
@@ -797,7 +859,8 @@ fi
 ### -   - env:       list some processing and environment parameters
 #-----------------------------------------------------------------------------
 
-if [ $1 != "qwerty" ] ; then
+#if [ $1 != "qwerty" ] ; then
+if [ $xdone == "F" ] ; then
 	echo "#-----------------------------------------------------------------------------"
 	echo "# ERROR: Invalid option $1; valid options are: "
 	egrep "^### - " $0 | cut -c6-99
