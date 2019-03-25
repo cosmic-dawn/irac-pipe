@@ -140,7 +140,8 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     
     Nframes = len(files)
     
-    print('Finding stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch))#,end="\r")
+#    print('Finding stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
+    print('Finding stars in job {5d} of {5d} AOR {} Channel {}'.format(JobNo, Njobs, AOR, Ch))
     
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -200,7 +201,8 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         BrightStarTable = inputCat
         ascii.write(Table(rows=BrightInFrame,names=['ra','dec']),BrightStarTable,format="ipac",overwrite=True)
         
-        print('Finding bright stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData,end="\r")
+#        print('Finding bright stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData) #,end="\r")
+        print('Finding bright stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData))
         
         #do the bright stars for star subtraciton
         command = "apex_user_list_1frame.pl -n findstar.nl -p " + PRF[cryo][Ch-1] + " -u " + BrightStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
@@ -221,7 +223,8 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         FitStarTable = inputCatAstro
         ascii.write(Table(rows=AstroInFrame,names=['ra','dec']),FitStarTable,format="ipac",overwrite=True)
 
-        print('Finding astrometry stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData,end="\r")
+#        print('Finding astrometry stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData) #,end="\r")
+        print('Finding astrometry stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData))
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -250,8 +253,9 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
     
     Nframes = len(files)
     
-    print('Checking stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch))#,end="\r")
-    
+#    print('Checking stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
+    print('Checking stars in job {:5d} of {:5d} AOR {} Channel {}'.format(JobNo, Njobs, AOR, Ch))
+ 
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
         frameRA = RAs[fileNo]
@@ -291,7 +295,8 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         #write out catalog for Astrometry stars
         FitStarTable = inputCatAstro
 
-        print('Finding astrometry stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData,end="\r")
+#        print('Finding astrometry stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData) #,end="\r")
+        print('Finding astrometry stars in {:6d} of {:6d}; {})'.format(fileNo +1, Nframes, inputData))
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -417,7 +422,8 @@ def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     #count the number of stars left
     GoodStars=ma.count(dRA)
     
-    print('Processing Exposure ' + str(JobNo+1) + ' of ' + str(Nrows) + ' using ' + str(GoodStars) + ' stars.  Offset is dRA = ' + str(corrRA*3600) + ' +/- ' + str(3600*sig_RA/np.sqrt(GoodStars)) + ' dDEC = ' + str(corrDEC*3600) + ' +/- ' + str(3600*sig_DEC/np.sqrt(GoodStars)),end="\r")
+#    print('Processing Exposure ' + str(JobNo+1) + ' of ' + str(Nrows) + ' using ' + str(GoodStars) + ' stars.  Offset is dRA = ' + str(corrRA*3600) + ' +/- ' + str(3600*sig_RA/np.sqrt(GoodStars)) + ' dDEC = ' + str(corrDEC*3600) + ' +/- ' + str(3600*sig_DEC/np.sqrt(GoodStars))) #,end="\r")
+    print('Processing Exposure {:6d} of {:6d} using {:5d} stars.  Offset is dRA = {:10.6f} +/- {:8.6f}; dDEC = {:10.6f} +/- {:8.6f}'.format(JobNo+1, Nrows, GoodStars, corrRA*3600, 3600*sig_RA/np.sqrt(GoodStars), corrDEC*3600, 3600*sig_DEC/np.sqrt(GoodStars) ))
     
     astrofix = np.array([JobNo,corrRA,corrDEC,sig_RA/np.sqrt(GoodStars),sig_DEC/np.sqrt(GoodStars),GoodStars],dtype=np.double)
     return(astrofix)
@@ -534,7 +540,8 @@ def check_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     #count the number of stars left
     GoodStars=ma.count(dRA)
     
-    print('Processing Exposure ' + str(JobNo+1) + ' of ' + str(Nrows) + ' using ' + str(GoodStars) + ' stars.  Offset is dRA = ' + str(corrRA*3600) + ' +/- ' + str(3600*sig_RA/np.sqrt(GoodStars)) + ' dDEC = ' + str(corrDEC*3600) + ' +/- ' + str(3600*sig_DEC/np.sqrt(GoodStars)),end="\r")
+#    print('Processing Exposure ' + str(JobNo+1) + ' of ' + str(Nrows) + ' using ' + str(GoodStars) + ' stars.  Offset is dRA = ' + str(corrRA*3600) + ' +/- ' + str(3600*sig_RA/np.sqrt(GoodStars)) + ' dDEC = ' + str(corrDEC*3600) + ' +/- ' + str(3600*sig_DEC/np.sqrt(GoodStars))) #,end="\r")
+    print('Processing Exposure {:6d} of {:6d} using {:5d} stars.  Offset is dRA = {:10.6f} +/- {:8.6f}; dDEC = {:10.6f} +/- {:8.6f}'.format(JobNo+1, Nrows, GoodStars, corrRA*3600, 3600*sig_RA/np.sqrt(GoodStars), corrDEC*3600, 3600*sig_DEC/np.sqrt(GoodStars) ))
     
     astrofix = np.array([JobNo,corrRA,corrDEC,sig_RA/np.sqrt(GoodStars),sig_DEC/np.sqrt(GoodStars),GoodStars],dtype=np.double)
     return(astrofix)
@@ -554,8 +561,9 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
     
     Nframes = len(files)
     
-    print('Subtracting stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch))#,end="\r")
-    
+#    print('Subtracting stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
+    print('Subtracting stars in job {} of {} AOR {} Channel {}'.format(JobNo, Njobs, AOR, Ch))
+
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
         frameRA = RAs[fileNo]
@@ -690,13 +698,15 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
                     GhostMask =np.sqrt(((StarIndex[1]-gx)**2) + ((StarIndex[0]-gy)**2))
                     starMaskHDU[0].data[(GhostMask<=PRFghostR[cryo][Ch-1]).nonzero()]=32767
 
-            print('Writing corrected file ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + SubtractedFile) #,end='\r')
+#            print('Writing corrected file ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + SubtractedFile) #,end='\r')
+            print('Writing corrected file {} of {}; {})'.format(fileNo +1, Nframes, SubtractedFile))
             bandcorrHDU.writeto(SubtractedFile,overwrite='True')  #write out the final star subtracted image
             bandcorrHDU.close()
             starMaskHDU.writeto(SubtractedMask,overwrite='True')  #write out the modified star mask
             starMaskHDU.close()
         else:
-            print('Writing corrected file ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + SubtractedFile) #,end='\r')
+#            print('Writing corrected file ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + SubtractedFile) #,end='\r')
+            print('Writing corrected file {} of {}; {})'.format(fileNo +1, Nframes, SubtractedFile))
             shutil.move(residualImage,SubtractedFile)
             shutil.copy(MaskFile,SubtractedMask)
 
@@ -736,8 +746,9 @@ def subtract_median(JobNo,JobList,log,AstroFix):
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
 
-    print("Procesing AOR " + str(AOR) + " channel " + str(Ch) + " with " + str(Nframes) + " frames")
-    
+#    print("Procesing AOR " + str(AOR) + " channel " + str(Ch) + " with " + str(Nframes) + " frames")
+    print('Processing AOR {} Chan {} with {} frames'.format(AOR, Channel, Nframes))
+
     for frame in range(0,Nframes):
         BCDfilename = files[frame]
         DCE = DCElist[frame]
@@ -1073,7 +1084,7 @@ def run_mosaic_geometry(JobNo,JobList):
     
     return(num_files)
 
-def make_mosaic(JobNo,JobList):
+def make_tile(JobNo,JobList):
     
     Ch = JobList['Channel'][JobNo]
     Tile = JobList['TileNumber'][JobNo]
@@ -1089,7 +1100,7 @@ def make_mosaic(JobNo,JobList):
     unclist   = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + ScaledUncSuffix + '.lst'
     
     #Run Mosaic
-    cmd = 'mosaic.pl -n ' + IRACMosaicConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' + processTMPDIR + ' > make_mosaic_'+str(JobNo)+'.log 2>&1 ' # /dev/null 2>&1'
+    cmd = 'mosaic.pl -n ' + IRACMosaicConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' + processTMPDIR + ' > make_tile_'+str(JobNo)+'.log 2>&1 '
     print(cmd)
     os.system(cmd)
     
