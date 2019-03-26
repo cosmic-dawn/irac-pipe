@@ -10,8 +10,6 @@
 # Purpose:  wrapper for subtract_medians.py
 #-----------------------------------------------------------------------------
 set -u 
-export PATH="~/sls/bin:~/bin:$PATH"
-export PYTHONPATH="/home/moneti/sls"
 
 ec()  { echo    "$(date "+[%d.%h.%y %T"]) $1 " ; } 
 ecn() { echo -n "$(date "+[%d.%h.%y %T"]) $1 " ; } 
@@ -29,7 +27,6 @@ module purge ; module load intelpython/3   mopex
 #-----------------------------------------------------------------------------
 
 bdate=$(date "+%s.%N")       # start time/date
-SLSdir=/home/moneti/sls      # scripts are here - to be rearranged
 
 # check if running via shell or via qsub:
 module=subtract_medians
@@ -41,7 +38,6 @@ if [[ "$0" =~ "$module" ]]; then
 else
     echo "## This is $module: running via qsub (from pipeline)"
 	WRK=@WRK@   # data are here
-	dry=@DY@    # dry mode
     dry=0
 fi
 

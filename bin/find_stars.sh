@@ -10,8 +10,6 @@
 # Purpose:  wrapper for fins_stars.py
 #-----------------------------------------------------------------------------
 set -u  
-export PATH="~/sls/bin:~/bin:$PATH"
-export PYTHONPATH="/home/moneti/sls"
 
 ec()  { echo    "$(date "+[%d.%h.%y %T"]) $1 " ; } 
 ecn() { echo -n "$(date "+[%d.%h.%y %T"]) $1 " ; } 
@@ -29,7 +27,6 @@ module purge ; module load intelpython/3   mopex
 #-----------------------------------------------------------------------------
 
 bdate=$(date "+%s.%N")       # start time/date
-SLSdir=/home/moneti/sls      # scripts are here - to be rearranged
 
 # check if running via shell or via qsub:
 module=find_stars
@@ -43,6 +40,10 @@ else
 	WRK=@WRK@   # data are here
     dry=0
 fi
+
+#-----------------------------------------------------------------------------
+# Begin work
+#-----------------------------------------------------------------------------
 
 mycd $WRK
 
@@ -68,4 +69,3 @@ echo " >>>>  $module finished on $(date) - walltime: $(wt)  <<<<"
 echo "------------------------------------------------------------------"
 echo ""
 exit 0
-
