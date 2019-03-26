@@ -27,11 +27,12 @@
 # v1.50: split build_mosaic in two parts  (17.Jan.19)
 # v2.00: using new scripts from Peter Capak, ex. make_mosaics (27.Feb.19)
 # v2.10: with parallelised version of make_mosaics (13.Mar.19)
+# v2.11: add check_stars and check_astrom; other details (26.mar.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.10b (27.feb.18)"
+vers="2.11 (23.mar.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -179,7 +180,7 @@ module purge ; module load intelpython/3   mopex
 dry=F       # dry mode - do nothing
 auto=F      # auto-continue defined at each step
 xdone=F     # set to T when one part is executed; else will give list of options
-use_rel=T   # to use released or development scripts
+#use_rel=F   # to use released (T) or development (F) scripts
 
 # if last param is 'dry' or 'test' then set dry mode
 if [ "${@: -1}" == 'dry' ] || [ "${@: -1}" == 'test' ]; then dry=T; fi
@@ -502,7 +503,7 @@ fi
 ### - 10. check stars:  check_stars      (optional; not yet implemented)
 #-----------------------------------------------------------------------------
 
-if [[ $1 =~ "check_stars" ]] || [ $auto == "T" ]; then
+if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	module=check_stars
@@ -510,17 +511,17 @@ if [[ $1 =~ "check_stars" ]] || [ $auto == "T" ]; then
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  10. Check stars   <<<<"
-	ec "#       !!!!   NOT YET IMPLEMENTED  !!!  "
 	ec "#-----------------------------------------------------------------------------"
-	echo "command is:"
-	echo "  python check_stars.py"
+
+	write_module; chk_outputs
+	end_step
 fi
 
 #-----------------------------------------------------------------------------
 ### - 11. check_astro:  check_astrometry (optional; not yet implemented)
 #-----------------------------------------------------------------------------
 
-if [[ $1 =~ "check_astro" ]] || [ $auto == "T" ]; then
+if [[ $1 =~ "check_astro" ]] || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	module=check_astrometry
@@ -528,11 +529,10 @@ if [[ $1 =~ "check_astro" ]] || [ $auto == "T" ]; then
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  12. Check astrometry   <<<<"
-	ec "#       !!!!   NOT YET IMPLEMENTED  !!!  "
 	ec "#-----------------------------------------------------------------------------"
 	
-	echo "command is:"
-	echo "  python check_astrometry.py"
+	write_module; chk_outputs
+	end_step
 fi
 
 #-----------------------------------------------------------------------------
