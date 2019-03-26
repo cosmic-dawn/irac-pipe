@@ -104,21 +104,23 @@ askuser() {  # ask user if ok to continue
 }
 
 chk_prev() {  # check given step is done (presence of .out file)
-	if [ ! -e $1.out ]; then 
-		ec "ERROR: $1.out not found ... previous step not complete? "
-		askuser
+	if [[ $1 != "NULL" ]]; then 
+		if [ ! -e $1.out ] || [[ $1 == "NULL" ]]; then 
+			ec "ERROR: $1.out not found ... previous step not complete? "
+			askuser
+		fi
 	fi
 	# copy python scripts to work dir
 	xdone=T
-	comm="rsync -au $SLSdir/$module.py ."; ec "$comm"; $comm
-	fn=$SLSdir/${module%.py}_function.py
+	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
+	fn=$pydir/${module%.py}_function.py
 	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
 }
 
 write_module() {  # write local verions of py and sh modules
 	info="for $WRK, built $(date +%d.%h.%y\ %T)"
 	sed -e "s|@NPROC@|$Nproc|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
-		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|"  $SLSdir/$module.sh > ./$module.sh
+		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|"  $bindir/$module.sh > ./$module.sh
 	chmod 755 $module.sh
 	ec "# Wrote $module.sh"
 	if [ $dry == "T" ]; then ec "----  EXITING DRY MODE	 ---- "; exit 10; fi
@@ -166,17 +168,20 @@ end_step() {
 module () {	 eval $(/usr/bin/modulecmd bash $*); }
 module purge ; module load intelpython/3   mopex 
 
-export       PATH="/home/moneti/sls/bin:~/bin:$PATH"
-export PYTHONPATH="/home/moneti/sls"    ### new for v2.00
+#export       PATH="/home/moneti/sls/bin:~/bin:$PATH"
+#export PYTHONPATH="/home/moneti/sls"    ### new for v2.00
 
-echo "PYTHONPATH:  $PYTHONPATH"
+#echo "PYTHONPATH:  $PYTHONPATH"
 #-----------------------------------------------------------------------------
 # setup dry and auto-continue modes
 #-----------------------------------------------------------------------------
 
-dry=F     # dry mode - do nothing
-auto=F    # auto-continue defined at each step
-xdone=F
+dry=F       # dry mode - do nothing
+auto=F      # auto-continue defined at each step
+xdone=F     # set to T when one part is executed; else will give list of options
+use_rel=T   # to use released or development scripts
+
+# if last param is 'dry' or 'test' then set dry mode
 if [ "${@: -1}" == 'dry' ] || [ "${@: -1}" == 'test' ]; then dry=T; fi
 
 #-----------------------------------------------------------------------------
@@ -185,14 +190,22 @@ if [ "${@: -1}" == 'dry' ] || [ "${@: -1}" == 'test' ]; then dry=T; fi
 
 mycd $WRK
 pars=supermopex.py
-SLSdir=/home/moneti/sls		 # scripts are here - to be rearranged
 pipelog=$WRK/irac.log
+
+if [ $use_rel == "T" ]; then
+	bindir=/home/moneti/softs/irac-pipe/bin
+	pydir=/home/moneti/softs/irac-pipe/python
+else
+	bindir=/home/moneti/sls
+	pydir=/home/moneti/sls
+fi
 
 echo " |-------  Check parameters  ---------------------------"
 echo " | Machine info and more:"
-echo " | - Work node:         $NODE"
-echo " | - Work dir (\$WRK):   $WRK"
-echo " | - Path to scripts:   $SLSdir/"
+echo " | - Work node:          $NODE"
+echo " | - Work dir (\$WRK):    $WRK"
+echo " | - Shell scripts in:   $bindir/"
+echo " | - Python scripts in:  $pydir/"
 echo " |------------------------------------------------------"
 echo -n " | " ; module list
 
@@ -201,12 +214,12 @@ echo " | Python params from $pars:"
 
 if [ ! -e $pars ]; then 
 	echo " |###  ATTN: Build local $pars from ###"  # | tee -a $pipelog
-	echo " |###  template is $SLSdir/$pars"
+	echo " |###  template is $pydir/$pars"
 	info="built for $WRK on $(date +%d.%h.%y\ %T)"
 	PID=$(pwd | tr \/ \	 | awk '{print $NF}')
 	sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NODE@|$NODE|" \
 		-e "s|@NODE@|$NODE|"  -e "s|@ROOTDIR@|$WRK|"  -e "s|@PID@|$PID|"  \
-		$SLSdir/$pars > ./$pars
+		$pydir/$pars > ./$pars
 else 
 	echo " |### ATTN: Using local $pars ###" | tee -a $pipelog
 	echo " |###       $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" | tee -a $pipelog
@@ -244,7 +257,7 @@ echo " |-------  End parameter check  ------------------------"
 echo ""
 
 # python processing scripts are copied when needed.  Here copy the flunctions library
-comm="rsync -a $SLSdir/spitzer_pipeline_functions.py ."
+comm="rsync -a $pydir/spitzer_pipeline_functions.py ."
 ec "$comm"; $comm
 
 if [ $1 == "pars" ]	 || [ $1 == "env" ]	 || [ $NAORs -eq 0 ]; then
@@ -279,6 +292,12 @@ if [ $1 == "setup" ]; then
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	
 	module=setup_pipeline
+	chk_prev NULL
+#	xdone=T
+#	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
+#	fn=$pydir/${module%.py}_function.py
+	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
+
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  1. Setup pipeline  <<<<"
 	ec "#-----------------------------------------------------------------------------"
@@ -325,7 +344,7 @@ if [ $1 == "catals" ] || [ $auto == "T" ]; then
 	ec "# >>>>  2. Get catalogues  <<<<"
 	ec "#-----------------------------------------------------------------------------"
 
-	comm="rsync -au $SLSdir/$module.py ."; ec "$comm"; $comm
+	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
 	if [ $(hostname) == "candid01.iap.fr" ]; then
 		echo "# Running ${module}.py on login node" > ${module}.out
 		echo "" >> ${module}.out
@@ -544,7 +563,7 @@ if [ $1 == "mosaic" ] || [ $auto == "T" ]; then
 	chk_prev setup_tiles
 
 	rm -f build.tiles make_tile_*.sh
-	comm="rsync -au $SLSdir/$module.py ."; ec "$comm"; $comm
+	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
 
 	# Find number of jobs:
 	#odir=$(grep '^OutputDIR '   $pars | cut -d\' -f2 | tr -d \/)
@@ -561,7 +580,7 @@ if [ $1 == "mosaic" ] || [ $auto == "T" ]; then
 		outmodule=${module}_$j.sh
 		info="for $WRK, built $(date +%d.%h.%y\ %T)"
 		sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|"  -e "s|@PID@|$PID|" \
-			-e "s|@JOB@|$j|"   $SLSdir/${module}.sh > $outmodule
+			-e "s|@JOB@|$j|"   $bindir/${module}.sh > $outmodule
 		chmod 755 $outmodule
 		echo "wrote $outmodule" | tee -a $pipelog
 		echo "qsub $outmodule; sleep 1" >> build.tiles
@@ -674,7 +693,7 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 	
 	module=build_mosaic
 	rm -f build.qall ${module}_ch?.out
-	cp $SLSdir/$module.py .
+	cp $pydir/$module.py .
 
 	doFull=1
 	if [ $doFull -eq 1 ]; then
@@ -712,7 +731,7 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 		info="for $WRK, built $(date +%d.%h.%y\ %T)"
 		sed -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  -e "s|@NPROC@|$NPROC|" \
 			-e "s|@PID@|$PID|" -e "s|@INFO@|$info|"  -e "s|@CHAN@|$chan|"   \
-			$SLSdir/${module}.sh > ./$outmodule
+			$bindir/${module}.sh > ./$outmodule
 		NF=$(grep in\ Ch${chan} irac.log | tr -s \  | cut -d\  -f7)  # N frames this ch.
 		if [ $NF -gt 40000 ]; then sed -i 's/time=48/time=100/' $outmodule; fi
 		chmod 755 $outmodule

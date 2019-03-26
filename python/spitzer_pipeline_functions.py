@@ -141,7 +141,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     Nframes = len(files)
     
 #    print('Finding stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
-    print('Finding stars in job {5d} of {5d} AOR {} Channel {}'.format(JobNo, Njobs, AOR, Ch))
+    print('Finding stars in job {:5d} of {:5d} AOR {} Channel {}'.format(JobNo, Njobs, AOR, Ch))
     
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -254,7 +254,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
     Nframes = len(files)
     
 #    print('Checking stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
-    print('Checking stars in job {:5d} of {:5d} AOR {} Channel {}'.format(JobNo, Njobs, AOR, Ch))
+    print('Checking stars in job {:5d} of {:5d} AOR {:} Channel {:}'.format(JobNo, Njobs, AOR, Ch))
  
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -296,7 +296,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         FitStarTable = inputCatAstro
 
 #        print('Finding astrometry stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData) #,end="\r")
-        print('Finding astrometry stars in {:6d} of {:6d}; {})'.format(fileNo +1, Nframes, inputData))
+        print('Finding astrometry stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData))
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -562,7 +562,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
     Nframes = len(files)
     
 #    print('Subtracting stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
-    print('Subtracting stars in job {} of {} AOR {} Channel {}'.format(JobNo, Njobs, AOR, Ch))
+    print('Subtracting stars in job {:4d} of {:4d} AOR {:} Channel {:}'.format(JobNo, Njobs, AOR, Ch))
 
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -747,7 +747,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
     Nframes = len(files)
 
 #    print("Procesing AOR " + str(AOR) + " channel " + str(Ch) + " with " + str(Nframes) + " frames")
-    print('Processing AOR {} Chan {} with {} frames'.format(AOR, Channel, Nframes))
+    print('Processing AOR {} Chan {} with {} frames'.format(AOR, Ch, Nframes))
 
     for frame in range(0,Nframes):
         BCDfilename = files[frame]
