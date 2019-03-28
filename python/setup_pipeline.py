@@ -51,7 +51,7 @@ LogOutput = list()
 for file in range(0,Nfiles):
     
     progress = "Reading file " + str(file+1) + " of " + str(Nfiles)
-    print(progress,end="\r")
+    print(progress) #,end="\r")
 
     #setup this line of the logfile
     LogLine = list()

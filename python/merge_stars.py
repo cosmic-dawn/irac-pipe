@@ -50,7 +50,7 @@ for ch in range(1,5):
         idx,d2d,d3d=dataMatch.match_to_catalog_sky(StarMatch) #do the match
         
         progress = "Channel " + str(ch) + " of 4, File " + str(i+1) + " of " + str(Nfiles)
-        print(progress,end="\r")
+        print(progress) #,end="\r")
         
         #Put the fluxes and positions into a holding array
         for sidx in range(0,len(idx)):

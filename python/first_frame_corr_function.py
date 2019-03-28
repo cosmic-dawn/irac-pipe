@@ -24,7 +24,7 @@ def first_frame_correct(JobNo):
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
     
-    print('Running First Frame Corrector Job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch))#,end="\r")
+    print('Running First Frame Corrector Job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
     
     for fileNo in range(0,Nframes):
     
@@ -55,7 +55,7 @@ def first_frame_correct(JobNo):
 
         #Only do correction for warm mission given the data we have in hand
         if cryo:
-            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' No Correction, just copying ' + ImageFile,end='\r')
+            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' No Correction, just copying ' + ImageFile) #,end='\r')
             shutil.copy(ImageFile,FFcorFile)  #just copy over the file
         else:
             #read the image
@@ -81,7 +81,7 @@ def first_frame_correct(JobNo):
             #do the correction
             imageHDU[0].data -= corrframe
             imageHDU.writeto(FFcorFile,overwrite='True')  #write out the final star subtracted image
-            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + FFcorFile,end="\r")
+            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + FFcorFile) #,end="\r")
 
 
 #parse the arguments
