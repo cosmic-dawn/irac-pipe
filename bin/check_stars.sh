@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -S /bin/bash
-#PBS -N chkstars_@PID@
+#PBS -N chkstrs_@PID@
 #PBS -o check_stars.out
 #PBS -j oe
 #PBS -l nodes=@NODE@:ppn=@NPROC@,walltime=48:00:00
