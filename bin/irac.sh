@@ -28,17 +28,19 @@
 # v2.00: using new scripts from Peter Capak, ex. make_mosaics (27.Feb.19)
 # v2.10: with parallelised version of make_mosaics (13.Mar.19)
 # v2.11: add check_stars and check_astrom; other details (26.mar.19)
+# v2.12: add use_rel var to select devel or release scripts; etc. (29.mar.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.11 (23.mar.19)"
+vers="2.12 (29.mar.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
-    echo "  Needs WRK env. vars defined to be work dir."
-    echo "# data processing options are:"
-    grep "^### - " $0 | cut -c6-99
+    echo "  Needs WRK environment variable defined to be work dir."
+    echo "#------------------------------------------------------------------ "
+	echo "# data processing options:"
+    grep "^### -" $0 | cut -c6-99
 	exit 0
 else
 	if [[ $1 =~ "ver" ]]; then 
@@ -55,12 +57,22 @@ if [ -z ${WRK+x} ]; then
 	exit 20
 fi
 
-NODE=$(echo $WRK | sed 's|/automnt||' | cut -c2-4)	 # this is sufficient for now
+if [ -z ${use_rel+x} ]; then 
+	ec "###  ATTN: setting use_rel=T: use release scripts; "
+	ec "###  export use_rel=F to use development scripts" 
+	use_rel=T
+fi
+
+if [ ! -e $WRK/supermopex.py ]; then 
+	NODE=$(echo $WRK | sed 's|/automnt||' | cut -c2-4)	 # use local node by default
+else 
+	NODE=$(grep RootNode $WRK/supermopex.py | cut -d\' -f2)
+fi
 
 get_nproc() {
 	cnodes | grep cores\] | cut -c2-5,23-25 | grep $NODE | cut -c5,6 ;
 }
-#nn=$(get_nproc); echo $nn
+
 if [[ $(hostname) =~ "candid" ]]; then
 	Nproc=$(($(get_nproc) - 3))
 else
@@ -169,10 +181,6 @@ end_step() {
 module () {	 eval $(/usr/bin/modulecmd bash $*); }
 module purge ; module load intelpython/3   mopex 
 
-#export       PATH="/home/moneti/sls/bin:~/bin:$PATH"
-#export PYTHONPATH="/home/moneti/sls"    ### new for v2.00
-
-#echo "PYTHONPATH:  $PYTHONPATH"
 #-----------------------------------------------------------------------------
 # setup dry and auto-continue modes
 #-----------------------------------------------------------------------------
@@ -185,11 +193,15 @@ xdone=F     # set to T when one part is executed; else will give list of options
 # if last param is 'dry' or 'test' then set dry mode
 if [ "${@: -1}" == 'dry' ] || [ "${@: -1}" == 'test' ]; then dry=T; fi
 
+if [ $1 == "pars" ]	 || [ $1 == "env" ]; then
+	dry=T
+fi
+
 #-----------------------------------------------------------------------------
 # Variables useful for processing:
 #-----------------------------------------------------------------------------
 
-mycd $WRK
+cd $WRK
 pars=supermopex.py
 pipelog=$WRK/irac.log
 
@@ -201,30 +213,50 @@ else
 	pydir=/home/moneti/sls
 fi
 
-echo " |-------  Check parameters  ---------------------------"
-echo " | Machine info and more:"
-echo " | - Work node:          $NODE"
-echo " | - Work dir (\$WRK):    $WRK"
-echo " | - Shell scripts in:   $bindir/"
-echo " | - Python scripts in:  $pydir/"
-echo " |------------------------------------------------------"
-echo -n " | " ; module list
+ec "#==================================================#"
+ec "#                                                  #"
+ec "#    This is irac.sh ver $vers          #"
+ec "#                                                  #"
+ec "#==================================================#"
+ec "|-------  Check parameters  ---------------------------"
+ec "| Machine info and more:"
+ec "| - Work node:          $NODE"
+ec "| - Work dir (\$WRK):    $WRK"
+ec "| - Shell scripts in:   $bindir/"
+ec "| - Python scripts in:  $pydir/"
+ec "|------------------------------------------------------"
+ecn "| " ; module list
 
-echo " |------------------------------------------------------"
-echo " | Python params from $pars:"
+ec "|------------------------------------------------------"
+#ec "| Python params from $pars:"
 
 if [ ! -e $pars ]; then 
-	echo " |###  ATTN: Build local $pars from ###"  # | tee -a $pipelog
-	echo " |###  template is $pydir/$pars"
+	ec "|###  ATTN: Build local $pars from ###"  # | tee -a $pipelog
+	ec "|###  template is $pydir/$pars"
 	info="built for $WRK on $(date +%d.%h.%y\ %T)"
 	PID=$(pwd | tr \/ \	 | awk '{print $NF}')
 	sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NODE@|$NODE|" \
 		-e "s|@NODE@|$NODE|"  -e "s|@ROOTDIR@|$WRK|"  -e "s|@PID@|$PID|"  \
 		$pydir/$pars > ./$pars
 else 
-	echo " |### ATTN: Using local $pars ###" | tee -a $pipelog
-	echo " |###       $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" | tee -a $pipelog
+	ec "|### ATTN: Using local $pars ###" | tee -a $pipelog
+	ec "|### $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" | tee -a $pipelog
 fi
+ec "|------------------------------------------------------"
+ec "| Python params from $pars:"
+
+##if [ ! -e $pars ]; then 
+###	ec "|###  ATTN: Build local $pars from ###"  # | tee -a $pipelog
+###	ec "|###  template is $pydir/$pars"
+##	info="built for $WRK on $(date +%d.%h.%y\ %T)"
+##	PID=$(pwd | tr \/ \	 | awk '{print $NF}')
+##	sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NODE@|$NODE|" \
+##		-e "s|@NODE@|$NODE|"  -e "s|@ROOTDIR@|$WRK|"  -e "s|@PID@|$PID|"  \
+##		$pydir/$pars > ./$pars
+##else 
+##	ec "|### ATTN: Using local $pars ###" | tee -a $pipelog
+##	ec "|###       $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" | tee -a $pipelog
+##fi
 
 # extract params from supermopex
 rnod=$(grep '^RootNode '   $pars | cut -d\' -f2)
@@ -239,32 +271,37 @@ PID=$(grep  '^PIDname '    $pars | cut -d\' -f2)
 if [ ! -d $odir ]; then mkdir $odir; fi
 if [ ! -d $tdir ]; then mkdir $tdir; fi
 
-echo " | - PID name:          $PID"
-echo " | - RootDIR:           $wdir"
-echo " | - RawDataDir:        \$RootDIR/$rdir/"
-echo " | - OutputDIR:         \$RootDIR/$odir/"
-echo " | - LogTable:          \$RootDIR/${odir}/$ltab"
-echo " | - TempDir:           \$RootDIR/$tdir/"
-echo " | - Nproc requested:   $(grep 'Nproc  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
+ec "| - PID name:          $PID"
+ec "| - RootDIR:           $wdir"
+ec "| - RawDataDir:        \$RootDIR/$rdir/"
+ec "| - OutputDIR:         \$RootDIR/$odir/"
+ec "| - LogTable:          \$RootDIR/${odir}/$ltab"
+ec "| - TempDir:           \$RootDIR/$tdir/"
+ec "| - Nproc requested:   $(grep 'Nproc  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
 
 if [ -d $(echo $rdir | tr -d \/) ]; then
 	NAORs=$(ls -d $rdir/r???* 2> /dev/null| wc -l)
-	echo " | - Num AORs found:    $NAORs"
+	ec "| - Num AORs found:    $NAORs"
 else 
-	echo " | ###### ./$rdir not found or contains no AORs ######"
+	ec "| ###### ./$rdir not found or contains no AORs ######"
 fi	 
 
-echo " |-------  End parameter check  ------------------------"
+ec "|-------  End parameter check  ------------------------"
 echo ""
-
-# python processing scripts are copied when needed.  Here copy the flunctions library
-comm="rsync -a $pydir/spitzer_pipeline_functions.py ."
-ec "$comm"; $comm
 
 if [ $1 == "pars" ]	 || [ $1 == "env" ]	 || [ $NAORs -eq 0 ]; then
 	exit 0		 # quit here ...
 fi
 
+# python processing scripts are copied when needed.  Here copy the flunctions library
+comm="rsync -a $pydir/spitzer_pipeline_functions.py ."; $comm
+#ec "$comm"; $comm
+
+#-----------------------------------------------------------------------------
+# Finished preambling ... now get to work
+#-----------------------------------------------------------------------------
+
+# check Products dir and temp dir
 if [[ ! -z $(ls $tdir) ]]; then
 	echo "##### ATTN: temp dir $tdir not empty ..."
 	askuser
@@ -275,14 +312,10 @@ if [[ ! -z $(ls $odir) ]]; then
 	askuser
 fi
 
-#-----------------------------------------------------------------------------
-# Finished preambling ... now get to work
-#-----------------------------------------------------------------------------
-
 ec "#-----------------------------------------------------------------------------"
 ec "##  Begin Spitzer data reduction pipeline	 "
-ec "##  - pipeline script is: irac.sh v$vers"
-ec "##  - using $pars from $(grep mopex.py $pars | grep built | cut -d' ' -f3-9)"
+#ec "##  - pipeline script is: irac.sh v$vers"
+#ec "##  - using $pars from $(grep mopex.py $pars | grep built | cut -d' ' -f3-9)"
 
 #-----------------------------------------------------------------------------
 ### -  1. setup:     setup_pipeline
@@ -293,10 +326,8 @@ if [ $1 == "setup" ]; then
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	
 	module=setup_pipeline
-	chk_prev NULL
-#	xdone=T
-#	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
-#	fn=$pydir/${module%.py}_function.py
+	chk_prev NULL 
+
 	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
 
 	ec "#-----------------------------------------------------------------------------"
@@ -494,13 +525,22 @@ if [ $1 == "submeds" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 
 	write_module; chk_outputs
-	ec "# Pruge lists of AOR/ch with no valid files "
+
+	# get total number of AORs * chan
+	nc=$(head -1 Products/AORs.tbl | \wc -c); nb=$(($nc-2))
+	Ntot=$(grep IRAC Products/AORs.tbl | cut -c${nb}-${nc} | awk 'BEGIN { s = 0 }; { s = s + $1 }; END { print "" s  }')
+	# get number of processed AORs * chan
+	Nproc=$(grep ^Proces subtract_medians.out | wc -l)
+	if [ $Ntot -ne $Nproc ]; then
+		ec "# Processed $Nproc AOR*Chan out of $Ntot "
+		askuser
+	fi
 
 	end_step
 fi
 
 #-----------------------------------------------------------------------------
-### - 10. check stars:  check_stars      (optional; not yet implemented)
+### - 10. check stars:  check_stars      (optional)
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
@@ -518,7 +558,7 @@ if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### - 11. check_astro:  check_astrometry (optional; not yet implemented)
+### - 11. check_astro:  check_astrometry (optional)
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "check_astro" ]] || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
@@ -873,9 +913,10 @@ fi
 #-----------------------------------------------------------------------------
 # keep lines below - needed for options list
 #-----------------------------------------------------------------------------
-### - # other options:
-### -   - version:   code version (to be taken with a grain of salt)
-### -   - env:       list some processing and environment parameters
+### -#------------------------------------------------------------------   
+### -# other options:
+### -  - version:   code version (to be taken with a grain of salt)
+### -  - env:       list some processing and environment parameters
 #-----------------------------------------------------------------------------
 
 #if [ $1 != "qwerty" ] ; then
