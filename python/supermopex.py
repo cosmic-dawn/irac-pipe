@@ -13,7 +13,7 @@
 # For use outside of the pipeline context, replace the @XXX@ fields with the local
 # values; anything beyond  the 'END PARAMETERS' line is probably best left alone.
 #
-# AMo, 27.feb.19
+# AMo, 05.apr.19
 #-----------------------------------------------------------------------------
 
 import numpy as np
@@ -65,6 +65,10 @@ IRACMosaicGeomConfig = 'mosaic_geom.nl'
 IRACMosaicConfig     = 'mosaic_par.nl'
 # and for "old style" version
 #IRACMosaicConfig = 'mosaic_FF.nl'   
+
+# Tile Configuration file - adapted from above
+IRACTileGeomConfig = 'tile_geom.nl'
+IRACTileConfig     = 'tile_par.nl'
 
 #Catalog of refined star positions and fluxes from mergestars
 RefinedStarCat = OutputDIR + 'stars.refined.tbl'
