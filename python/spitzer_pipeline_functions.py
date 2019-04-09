@@ -1,3 +1,4 @@
+
 import numpy as np
 import numpy.ma as ma
 
@@ -1061,7 +1062,8 @@ def run_mosaic_geometry(JobNo,JobList):
     
     #temporary files
     pid = os.getpid() #get the PID for temp files
-    processTMPDIR = TMPDIR + 'tmpfiles' + str(pid) + '-' + str(JobNo) + '/'
+    #processTMPDIR = TMPDIR + 'tmpfiles' + str(pid) + '-' + str(JobNo) + '/'
+    processTMPDIR = TMPDIR + 'tmpfiles_mg_' + str(JobNo) + '/'
     os.system('mkdir -p ' + processTMPDIR)
     
     #input lists
@@ -1071,7 +1073,8 @@ def run_mosaic_geometry(JobNo,JobList):
     geomlist = processTMPDIR + 'geom_' + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     
     #Run Mosaic
-    cmd = 'mosaic.pl -n ' + IRACMosaicGeomConfig + ' -I ' + imagelist + ' -F' + JobList['FIF'][JobNo] + ' -O ' + processTMPDIR + ' > setup_mosaic_tiles.log 2>&1' #/dev/null 2>&1'
+    logfile = processTMPDIR + '/setup_tiles_job'+str(JobNo)+'.log'
+    cmd = 'mosaic.pl -n ' +IRACTileGeomConfig+ ' -I ' +imagelist+ ' -F' +JobList['FIF'][JobNo]+ ' -O ' +processTMPDIR+ ' > '+logfile+' 2>&1'
     print(cmd)
     os.system(cmd)
     
@@ -1079,7 +1082,11 @@ def run_mosaic_geometry(JobNo,JobList):
     num_files = sum(1 for line in open(geomlist))
     
     #clean up
+    logfileCMD = 'ls -lh ' + logfile
+    os.system(logfileCMD)
+    
     cleanupCMD = 'rm -rf ' + processTMPDIR
+    print(cleanupCMD)
     os.system(cleanupCMD)
     
     return(num_files)
@@ -1089,10 +1096,24 @@ def make_tile(JobNo,JobList):
     Ch = JobList['Channel'][JobNo]
     Tile = JobList['TileNumber'][JobNo]
     
-    #temporary files
-    pid = os.getpid() #get the PID for temp files
-    processTMPDIR = TMPDIR + 'tmpfiles' + str(pid) + '-' + str(JobNo) + '/'
+    # temporary files
+    #pid = os.getpid() #get the PID for temp files - to build tmp dir name
+    locnode = os.uname().nodename.split('.')[0]
+    # using temp dir in supermopex, on WRK node
+    #processTMPDIR = TMPDIR + 'tmpfiles_tiles_' + str(JobNo) + '/'
+
+    # to use local scratch dir on node on which process is running
+    processTMPDIR = '/scratch/tmpfiles_tiles_' + str(JobNo) + '/'
     os.system('mkdir -p ' + processTMPDIR)
+
+    print(">> process no. {} running on node {}".format(JobNo, locnode))
+    print(">> process temp dir is {}".format(processTMPDIR))
+    os.system('ls -lhd ' + processTMPDIR)
+    if os.path.dirname(processTMPDIR):
+        print(">> temp dir created")
+    else:
+        print("ERROR: could not create temp dir .... quitting")
+        sys.exit(3)
     
     #input lists
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
@@ -1100,8 +1121,12 @@ def make_tile(JobNo,JobList):
     unclist   = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + ScaledUncSuffix + '.lst'
     
     #Run Mosaic
-    cmd = 'mosaic.pl -n ' + IRACMosaicConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' + processTMPDIR + ' > make_tile_'+str(JobNo)+'.log 2>&1 '
-    print(cmd)
+    #logfile = TMPDIR + '/make_tile_'+str(JobNo)+'.log'
+    logfile = 'make_tile_'+str(JobNo)+'.log'
+    print(">> logfile is {}".format(logfile))
+    cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
+    print(">> command line is:")
+    print("   "+cmd)
     os.system(cmd)
     
     #move the files
@@ -1110,14 +1135,8 @@ def make_tile(JobNo,JobList):
     mosaic =  basename + str(Ch) + '.mosaic.fits'
     shutil.move(processTMPDIR + 'Combine-mosaic/mosaic.fits',mosaic)
     
-    medmosaic = basename + str(Ch) + '.median_mosaic.fits'
-    shutil.move(processTMPDIR + 'Combine-mosaic/median_mosaic.fits',medmosaic)
-    
     mosaicunc = basename + str(Ch) + '.mosaic_unc.fits'
     shutil.move(processTMPDIR + 'Combine-mosaic/mosaic_unc.fits',mosaicunc)
-    
-    medmosaicunc = basename + str(Ch) + '.median_mosaic_unc.fits'
-    shutil.move(processTMPDIR + 'Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
     
     mosaiccov = basename + str(Ch) + '.mosaic_cov.fits'
     shutil.move(processTMPDIR + 'Combine-mosaic/mosaic_cov.fits',mosaiccov)
@@ -1125,6 +1144,12 @@ def make_tile(JobNo,JobList):
     mosaicstd = basename + str(Ch) + '.mosaic_std.fits'
     shutil.move(processTMPDIR + 'Combine-mosaic/mosaic_std.fits',mosaicstd)
 
+    medmosaic = basename + str(Ch) + '.median_mosaic.fits'
+    shutil.move(processTMPDIR + 'Combine-mosaic/median_mosaic.fits',medmosaic)
+    
+    medmosaicunc = basename + str(Ch) + '.median_mosaic_unc.fits'
+    shutil.move(processTMPDIR + 'Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
+    
     #copy the output RMASKS to an area so they can be combined
     RMaskOutdir = RMaskDir + 'tile_' + str(Tile)
     MkDirCmd = 'mkdir -p ' + RMaskOutdir    
@@ -1134,7 +1159,8 @@ def make_tile(JobNo,JobList):
     MovCmd = 'mv ' + RMaskImages + ' ' + RMaskOutdir
     os.system(MovCmd)
         
-    #clean up
-    cleanupCMD = 'rm -rf ' + processTMPDIR
-    os.system(cleanupCMD)
+    #clean up:  done in shell script if all products found
+#    cleanupCMD = 'rm -rf ' + processTMPDIR
+#    print(cleanupCMD)
+#    os.system(cleanupCMD)
 

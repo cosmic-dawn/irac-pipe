@@ -3,7 +3,7 @@
 #PBS -N mkTile_@JOB@_@PID@
 #PBS -o make_tile_@JOB@.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=4,walltime=02:00:00
+#PBS -l nodes=1:ppn=11,walltime=48:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     make_tile.sh @INFO@
@@ -30,10 +30,11 @@ bdate=$(date "+%s.%N")       # start time/date
 
 # check if running via shell or via qsub:
 module=make_tile
+node=$(hostname)   # NB: compute nodes don't have .iap.fr in name
 
 if [[ "$0" =~ "$module" ]]; then
 	WRK=$(pwd)
-    echo "## This is $module: running as shell script "
+    echo "## This is $module: running as shell script on $node"
     if [ $# -eq 0 ]; then 
     	echo "ERROR: Must give a job nomber"
     	exit 5
@@ -46,7 +47,7 @@ if [[ "$0" =~ "$module" ]]; then
     fi
     if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi
 else
-    echo "## This is $module: running via qsub (from pipeline)"
+    echo "## This is $module: running via qsub on $node"
 	WRK=@WRK@   # data are here
 	jobNo=@JOB@
     dry=0
@@ -58,12 +59,17 @@ fi
 
 mycd $WRK
 
+# temp dir for current proces 
+procTmpDir=/scratch/tmpfiles_tile_$jobNo             # to be deleted if all ok
+
 # Build the command line
 comm="python $module.py $jobNo"
 
-echo "   - Work dir is:  $WRK"
-echo "   - Command is: $comm"
-echo "   - Starting on $(date)"
+echo " - Work dir is:  $WRK"
+echo " - Command is: $comm"
+echo " - Starting on $(date) on $(hostname)"
+echo " - command line is: "
+echo " % $comm"
 
 if [ $dry -eq 1 ]; then
 	echo ">> $module finished in dry mode"; exit 1
@@ -71,9 +77,10 @@ fi
 
 # Now do the work
 echo ""
-echo ">> -----  Begin python output  ----- "
+echo ">> ==========  Begin python output  ========== "
 
 $comm
+echo ">> ==========   End python output   ========== "
 echo ""
 
 # check that the tile is built
@@ -84,11 +91,18 @@ tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) #; echo "$PID, $tlf"; exit
 tlf=$odir/${PID}$tlf                              #; echo "$PID, $tlf"
 
 nline=$(($jobNo+5))  # line number for job
-outf=$(sed "${nline}q;d" $tlf | awk '{printf "mini.irac.tile.%s.%s.mosaic.fits\n",$2,$3}')
-if [ -e $odir/$outf ]; then 
-	echo " ... built $odir/$outf and partners"
+outf=$(sed "${nline}q;d" $tlf | awk '{printf "'$PID'.irac.tile.%s.%s.mosaic.fits",$2,$3}')
+outp=$(sed "${nline}q;d" $tlf | awk '{printf "'$PID'.irac.tile.%s.%s.*mosaic*.fits",$2,$3}')
+np=$(ls -l $odir/$outp | wc -l)   # number of products build - should be 6
+
+if [ $np -eq 6 ]; then 
+	echo ">> Job $jobNo Done: built $odir/$outf and partners ... Good job!!"
+	echo ">> Deleting process temp dir $procTmpDir"
+	rm -rf $procTmpDir
 else
-	echo " PROBLEM: failed to build $odir/$outf and partners"
+	echo ">> PROBLEM: Job $jobNo  built only $np products: "
+	echo ">> -- kept process temp dir $procTmpDir on $node"
+	ls -l $odir/$outp 
 fi
 
 echo ""
