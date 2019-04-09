@@ -29,6 +29,7 @@
 # v2.10: with parallelised version of make_mosaics (13.Mar.19)
 # v2.11: add check_stars and check_astrom; other details (26.mar.19)
 # v2.12: add use_rel var to select devel or release scripts; etc. (29.mar.19)
+# v2.13: minor reorganisation of code; minor other changes (09.apr.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
@@ -58,8 +59,8 @@ if [ -z ${WRK+x} ]; then
 fi
 
 if [ -z ${use_rel+x} ]; then 
-	ec "###  ATTN: setting use_rel=T: use release scripts; "
-	ec "###  export use_rel=F to use development scripts" 
+	echo "###  ATTN: setting use_rel=T: use release scripts; "
+	echo "###  export use_rel=F to use development scripts" 
 	use_rel=T
 fi
 
@@ -81,6 +82,7 @@ else
 	echo "####  ATTN: Should be running pipeline from login node!!"
 	echo "####----------------------------------------------------"
 	echo "####"
+	Nproc=0    # to avoid giving unbound variable error
 
 fi
 
@@ -222,41 +224,29 @@ ec "|-------  Check parameters  ---------------------------"
 ec "| Machine info and more:"
 ec "| - Work node:          $NODE"
 ec "| - Work dir (\$WRK):    $WRK"
+if [ $use_rel != "T" ]; then
+	ec "|### ATTN: using development scripts"
+fi
 ec "| - Shell scripts in:   $bindir/"
 ec "| - Python scripts in:  $pydir/"
 ec "|------------------------------------------------------"
 ecn "| " ; module list
-
 ec "|------------------------------------------------------"
-#ec "| Python params from $pars:"
 
 if [ ! -e $pars ]; then 
-	ec "|###  ATTN: Build local $pars from ###"  # | tee -a $pipelog
-	ec "|###  template is $pydir/$pars"
+	ec "|### ATTN: Build local $pars from ###"  # | tee -a $pipelog
+	ec "|### template is $pydir/$pars"
 	info="built for $WRK on $(date +%d.%h.%y\ %T)"
 	PID=$(pwd | tr \/ \	 | awk '{print $NF}')
 	sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NODE@|$NODE|" \
 		-e "s|@NODE@|$NODE|"  -e "s|@ROOTDIR@|$WRK|"  -e "s|@PID@|$PID|"  \
 		$pydir/$pars > ./$pars
 else 
-	ec "|### ATTN: Using local $pars ###" | tee -a $pipelog
-	ec "|### $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" | tee -a $pipelog
+	ec "|### ATTN: Using local $pars ###"            #### | tee -a $pipelog
+	ec "|### $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" #### | tee -a $pipelog
 fi
 ec "|------------------------------------------------------"
 ec "| Python params from $pars:"
-
-##if [ ! -e $pars ]; then 
-###	ec "|###  ATTN: Build local $pars from ###"  # | tee -a $pipelog
-###	ec "|###  template is $pydir/$pars"
-##	info="built for $WRK on $(date +%d.%h.%y\ %T)"
-##	PID=$(pwd | tr \/ \	 | awk '{print $NF}')
-##	sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NODE@|$NODE|" \
-##		-e "s|@NODE@|$NODE|"  -e "s|@ROOTDIR@|$WRK|"  -e "s|@PID@|$PID|"  \
-##		$pydir/$pars > ./$pars
-##else 
-##	ec "|### ATTN: Using local $pars ###" | tee -a $pipelog
-##	ec "|###       $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" | tee -a $pipelog
-##fi
 
 # extract params from supermopex
 rnod=$(grep '^RootNode '   $pars | cut -d\' -f2)
@@ -295,7 +285,7 @@ fi
 
 # python processing scripts are copied when needed.  Here copy the flunctions library
 comm="rsync -a $pydir/spitzer_pipeline_functions.py ."; $comm
-#ec "$comm"; $comm
+#ec "$comm"
 
 #-----------------------------------------------------------------------------
 # Finished preambling ... now get to work
@@ -303,19 +293,18 @@ comm="rsync -a $pydir/spitzer_pipeline_functions.py ."; $comm
 
 # check Products dir and temp dir
 if [[ ! -z $(ls $tdir) ]]; then
-	echo "##### ATTN: temp dir $tdir not empty ..."
-	askuser
+	ec "##### ATTN: temp dir $tdir not empty ..."
+	if [ $dry == 'F' ]; then askuser; fi
 fi
 
 if [[ ! -z $(ls $odir) ]]; then
-	echo "##### ATTN: Products dir $odir not empty ..."
-	askuser
+	ec "##### ATTN: Products dir $odir not empty ..."
+	if [ $dry == 'F' ]; then askuser; fi
 fi
+ec ""
 
 ec "#-----------------------------------------------------------------------------"
 ec "##  Begin Spitzer data reduction pipeline	 "
-#ec "##  - pipeline script is: irac.sh v$vers"
-#ec "##  - using $pars from $(grep mopex.py $pars | grep built | cut -d' ' -f3-9)"
 
 #-----------------------------------------------------------------------------
 ### -  1. setup:     setup_pipeline
@@ -325,14 +314,12 @@ if [ $1 == "setup" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	
-	module=setup_pipeline
-	chk_prev NULL 
-
-	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  1. Setup pipeline  <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=setup_pipeline
+	chk_prev NULL 
+	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
 
 	write_module; chk_outputs
 
@@ -369,12 +356,11 @@ fi
 if [ $1 == "catals" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=get_catalogs 
-	chk_prev setup_pipeline
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  2. Get catalogues  <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=get_catalogs 
+	chk_prev setup_pipeline
 
 	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
 	if [ $(hostname) == "candid01.iap.fr" ]; then
@@ -408,12 +394,11 @@ fi
 if [ $1 == "ffcorr" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=first_frame_corr
-	chk_prev get_catalogs
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  3. First frame correction  <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=first_frame_corr
+	chk_prev get_catalogs
 
 	write_module; chk_outputs; end_step
 fi
@@ -426,12 +411,11 @@ fi
 if [ $1 == "find" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=find_stars
-	chk_prev first_frame_corr
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  4. Find stars  <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=find_stars
+	chk_prev first_frame_corr
 
 	write_module; chk_outputs; end_step
 	# fix logfile (missing CRs)
@@ -445,12 +429,11 @@ fi
 if [ $1 == "merge" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=merge_stars
-	chk_prev find_stars
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  5. Merge stars  <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=merge_stars
+	chk_prev find_stars
 
 	write_module; chk_outputs; end_step
 fi
@@ -462,12 +445,11 @@ fi
 if [ $1 == "substars" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=subtract_stars
-	chk_prev merge_stars
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  6. Subtract stars  <<<<"
 	ec "#-----------------------------------------------------------------------------"
+ 	module=subtract_stars
+	chk_prev merge_stars
 
 	write_module; chk_outputs; end_step
 fi
@@ -479,12 +461,11 @@ fi
 if [ $1 == "medians" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=make_medians
-	chk_prev subtract_stars
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  7. Make medians   <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=make_medians
+	chk_prev subtract_stars
 
 	write_module; chk_outputs
 	# fix logfile (missing CRs)
@@ -500,12 +481,11 @@ fi
 if [ $1 == "astrom" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=fix_astrometry
-	chk_prev make_medians
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  8. Fix astrometry   <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=fix_astrometry
+	chk_prev make_medians
 
 	write_module; chk_outputs; end_step
 fi
@@ -517,12 +497,11 @@ fi
 if [ $1 == "submeds" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=subtract_medians
-	chk_prev fix_astrometry
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  9. Subtract medians    <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=subtract_medians
+	chk_prev fix_astrometry
 
 	write_module; chk_outputs
 
@@ -546,12 +525,11 @@ fi
 if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	module=check_stars
-	chk_prev subtract_medians
-
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  10. Check stars   <<<<"
 	ec "#-----------------------------------------------------------------------------"
+	module=check_stars
+	chk_prev subtract_medians
 
 	write_module; chk_outputs
 	end_step
@@ -564,54 +542,67 @@ fi
 if [[ $1 =~ "check_astro" ]] || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	ec "#-----------------------------------------------------------------------------"
+	ec "# >>>>  11. Check astrometry   <<<<"
+	ec "#-----------------------------------------------------------------------------"
 	module=check_astrometry
 	chk_prev subtract_medians
 
-	ec "#-----------------------------------------------------------------------------"
-	ec "# >>>>  12. Check astrometry   <<<<"
-	ec "#-----------------------------------------------------------------------------"
-	
+
 	write_module; chk_outputs
 	end_step
 fi
 
 #-----------------------------------------------------------------------------
-### - 12. tiles:     setup_tiles
+### - 12. set_tiles: setup_tiles
 #-----------------------------------------------------------------------------
 
-if [[ $1 =~ "tiles" ]] || [ $auto == "T" ]; then
+if [[ $1 =~ "set_tiles" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+	ec "#-----------------------------------------------------------------------------"
+	ec "# >>>>  12. Setup tiles for mosaic    <<<<"
+	ec "#-----------------------------------------------------------------------------"
 	module=setup_tiles
 	chk_prev subtract_medians
 
-	ec "#-----------------------------------------------------------------------------"
-	ec "# >>>>  10. Setup tiles for mosaics    <<<<"
-	#ec "#-----------------------------------------------------------------------------"
-
 	write_module; chk_outputs
+
+	# check TileListFile:
+	tlf=${odir}/${PID}$(grep '^TileListFile ' $pars | cut -d\' -f2) 
+	njobs=$(cat $tlf | grep $PID | wc -l)
+	if [ -e $tlf ] && [ $njobs -gt 0 ]; then
+		ec "# Built mosaic tile list: $tlf, with $njobs jobs"
+	else
+		ec "# PROBLEM: $tlf not found or $njobs = 0"
+		askuser
+	fi
+
 	end_step
 fi
 
 #-----------------------------------------------------------------------------
-### - 13. mosaic:    make_tiles
+### - 13. do_tiles:  make_tiles
 #-----------------------------------------------------------------------------
 
-if [ $1 == "mosaic" ] || [ $auto == "T" ]; then
+if [ $1 == "do_tiles" ] || [ $1 == "make_tiles" ] || [ $auto == "T" ]; then
 
 	module=make_tile
 	chk_prev setup_tiles
+
+	ec "#-----------------------------------------------------------------------------"
+	ec "# >>>>  13. Build the tiles    <<<<"
+	ec "#-----------------------------------------------------------------------------"
 
 	rm -f build.tiles make_tile_*.sh
 	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
 
 	# Find number of jobs:
-	#odir=$(grep '^OutputDIR '   $pars | cut -d\' -f2 | tr -d \/)
-	#PID=$(grep  '^PIDname '     $pars | cut -d\' -f2)
 	parfile=$(grep  '^IRACMosaicConfig '     $pars | cut -d\' -f2)
-	tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) #; echo "$PID, $tlf"; exit
-	tlf=$odir/${PID}$tlf                              #; echo "$PID, $tlf"
+	tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) 
+	tlf=$odir/${PID}$tlf 
 	njobs=$(cat $tlf | grep $PID | wc -l)
+	
 	ec "# Mosaic config file: $parfile"
 	ec "# Mosaic tile list:   $tlf, with $njobs jobs"
 
@@ -668,7 +659,7 @@ if [ $1 == "mosaic" ] || [ $auto == "T" ]; then
 
 	end_step
 
-#	exit 0
+	exit 0
 fi
 
 #-----------------------------------------------------------------------------
@@ -735,6 +726,7 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 	rm -f build.qall ${module}_ch?.out
 	cp $pydir/$module.py .
 
+	# doFull = 1: full build, else split into two parts; 
 	doFull=1
 	if [ $doFull -eq 1 ]; then
 		ec "#####    do full build   #####"
