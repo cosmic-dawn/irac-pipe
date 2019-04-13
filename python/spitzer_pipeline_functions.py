@@ -1062,7 +1062,6 @@ def run_mosaic_geometry(JobNo,JobList):
     
     #temporary files
     pid = os.getpid() #get the PID for temp files
-    #processTMPDIR = TMPDIR + 'tmpfiles' + str(pid) + '-' + str(JobNo) + '/'
     processTMPDIR = TMPDIR + 'tmpfiles_mg_' + str(JobNo) + '/'
     os.system('mkdir -p ' + processTMPDIR)
     
@@ -1095,33 +1094,34 @@ def make_tile(JobNo,JobList):
     
     Ch = JobList['Channel'][JobNo]
     Tile = JobList['TileNumber'][JobNo]
+    locnode = os.uname().nodename.split('.')[0]  # name of process node
+    print(">> Processsing job {} on node {}".format(JobNo, locnode))
     
-    # temporary files
-    #pid = os.getpid() #get the PID for temp files - to build tmp dir name
-    locnode = os.uname().nodename.split('.')[0]
-    # using temp dir in supermopex, on WRK node
-    #processTMPDIR = TMPDIR + 'tmpfiles_tiles_' + str(JobNo) + '/'
-
-    # to use local scratch dir on node on which process is running
-    processTMPDIR = '/scratch/tmpfiles_tiles_' + str(JobNo) + '/'
-    os.system('mkdir -p ' + processTMPDIR)
-
-    print(">> process no. {} running on node {}".format(JobNo, locnode))
-    print(">> process temp dir is {}".format(processTMPDIR))
-    os.system('ls -lhd ' + processTMPDIR)
-    if os.path.dirname(processTMPDIR):
-        print(">> temp dir created")
+    # temporary files:
+    # use local scratch area on process node, if large, to avoid heavy network usage
+    if (locnode == 'n04') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
+        processTMPDIR = '/'+locnode+'data/tmpdir_'+PIDname+'_tile_' + str(JobNo) #+ '/'
     else:
-        print("ERROR: could not create temp dir .... quitting")
+        processTMPDIR = '/scratch/tmpdir_'+PIDname+'_tile_' + str(JobNo) #+ '/'
+    
+    shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
+    os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
+    os.system('touch ' +processTMPDIR+ '/testfile')
+
+    if os.path.dirname(processTMPDIR):
+        print(">> Clean temp dir {} created".format(processTMPDIR))
+    else:
+        print("## ERROR: could not create temp dir .... quitting")
         sys.exit(3)
     
+    print(">> Using temp dir {}".format(processTMPDIR))
+
     #input lists
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     masklist  = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + starMaskSuffix + '.lst'
     unclist   = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + ScaledUncSuffix + '.lst'
     
     #Run Mosaic
-    #logfile = TMPDIR + '/make_tile_'+str(JobNo)+'.log'
     logfile = 'make_tile_'+str(JobNo)+'.log'
     print(">> logfile is {}".format(logfile))
     cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
@@ -1131,26 +1131,24 @@ def make_tile(JobNo,JobList):
     
     #move the files
     basename = OutputDIR + PIDname + '.irac.tile.' + str(Tile) + '.'
+    print(">> Products root name: {}".format(Tile))
     
-    mosaic =  basename + str(Ch) + '.mosaic.fits'
-    shutil.move(processTMPDIR + 'Combine-mosaic/mosaic.fits',mosaic)
+    mosaic = basename + str(Ch) + '.mosaic.fits'
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits',mosaic)
+    except:
+        print("##ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
     
     mosaicunc = basename + str(Ch) + '.mosaic_unc.fits'
-    shutil.move(processTMPDIR + 'Combine-mosaic/mosaic_unc.fits',mosaicunc)
+    shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
     
     mosaiccov = basename + str(Ch) + '.mosaic_cov.fits'
-    shutil.move(processTMPDIR + 'Combine-mosaic/mosaic_cov.fits',mosaiccov)
+    shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
     
     mosaicstd = basename + str(Ch) + '.mosaic_std.fits'
-    shutil.move(processTMPDIR + 'Combine-mosaic/mosaic_std.fits',mosaicstd)
+    shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
 
-    medmosaic = basename + str(Ch) + '.median_mosaic.fits'
-    shutil.move(processTMPDIR + 'Combine-mosaic/median_mosaic.fits',medmosaic)
-    
-    medmosaicunc = basename + str(Ch) + '.median_mosaic_unc.fits'
-    shutil.move(processTMPDIR + 'Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
-    
-    #copy the output RMASKS to an area so they can be combined
+    # copy the output RMASKS to an area so they can be combined
     RMaskOutdir = RMaskDir + 'tile_' + str(Tile)
     MkDirCmd = 'mkdir -p ' + RMaskOutdir    
     os.system(MkDirCmd)
@@ -1158,9 +1156,26 @@ def make_tile(JobNo,JobList):
     RMaskImages = processTMPDIR + '/Rmask-mosaic/*_rmask.fits'
     MovCmd = 'mv ' + RMaskImages + ' ' + RMaskOutdir
     os.system(MovCmd)
-        
-    #clean up:  done in shell script if all products found
-#    cleanupCMD = 'rm -rf ' + processTMPDIR
+
+    # cp the median_mosaic products to the output dir
+    medmosaic = basename + str(Ch) + '.median_mosaic.fits'
+    medmosaicunc = basename + str(Ch) + '.median_mosaic_unc.fits'
+
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic.fits',medmosaic)
+    except:
+        print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic.fits not found")
+        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.fits instead")
+        shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.fits', medmosaic)
+
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
+    except:
+        print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic_unc.fits not found")
+        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image_Unc.fits instaed")
+        shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.fits',medmosaicunc)
+    
+    # clean up:  done in shell script if all products found
+    cleanupCMD = 'rm -rf ' + processTMPDIR
 #    print(cleanupCMD)
 #    os.system(cleanupCMD)
-

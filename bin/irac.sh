@@ -29,12 +29,12 @@
 # v2.10: with parallelised version of make_mosaics (13.Mar.19)
 # v2.11: add check_stars and check_astrom; other details (26.mar.19)
 # v2.12: add use_rel var to select devel or release scripts; etc. (29.mar.19)
-# v2.13: minor reorganisation of code; minor other changes (09.apr.19)
+# v2.13: minor reorganisation of code; minor other changes(13.apr.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.12 (29.mar.19)"
+vers="2.13 (13.apr.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -207,7 +207,7 @@ cd $WRK
 pars=supermopex.py
 pipelog=$WRK/irac.log
 
-if [ $use_rel == "T" ]; then
+if [ $use_rel == "T" ] || [ $use_rel == "True" ]; then
 	bindir=/home/moneti/softs/irac-pipe/bin
 	pydir=/home/moneti/softs/irac-pipe/python
 else
