@@ -30,11 +30,12 @@
 # v2.11: add check_stars and check_astrom; other details (26.mar.19)
 # v2.12: add use_rel var to select devel or release scripts; etc. (29.mar.19)
 # v2.13: minor reorganisation of code; minor other changes(13.apr.19)
+# v2.14: improve handling of large number of jobs in make_tiles (16.apr.18)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.13 (13.apr.19)"
+vers="2.14 (16.apr.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -170,7 +171,6 @@ chk_outputs() {	 # check outputs of module
 }
 end_step() {
 	ec "# Pipeline step $module finished successfully ... good job!!  <<<<"
-
 	if [ $auto == "F" ]; then
 		ec "#-----------------------------------------------------------------------------"
 		exit 0
@@ -630,22 +630,36 @@ if [ $1 == "do_tiles" ] || [ $1 == "make_tiles" ] || [ $auto == "T" ]; then
 		sleep 30
 	done
 	chmod 644 ${module}_*.out
-	for f in ${module}_*.out; do
-		ec "# Job $f finished - $(grep RESOURCESUSED $f | cut -d\, -f4)"
-	done
+#	for f in ${module}_*.out; do
+#		ec "# Job $f finished - $(grep RESOURCESUSED $f | cut -d\, -f4)"
+#	done
 
 	ec "# Check results ..."
 	# 1. check torque exit status
 	grep EXIT\ STATUS ${module}_*.out > estats.txt
 	nbad=$(grep -v STATUS:\ 0  estats.txt | wc -l)	# files w/ status != 0
 	if [ $nbad -gt 0 ]; then
-		ec "PROBLEM: $module_nn.sh exit status not 0: "
+		ec "PROBLEM: some ${module}_nn.sh exit status not 0: "
 		grep -v STATUS:\ 0 estats.txt ; askuser
 	else
 		ec "# ==> torque exit status ok;"; rm -f estats.txt
 	fi
+	# 2. Check .out files for incomplete processing
+	grep PROBLEM  ${module}_*.out > make_tiles.pbs
+	nbps=$(cat make_tiles.pbs | wc -l)
+	nmos=$(ls $odir/$PID.irac.tile.*.mosaic.fits | wc -l)
+	if [ $npbs -ne 0 ]; then
+		ec "PROBLEM: found $npbs jobs that did not build all expected outputs - see make_tiles.pbs"
+		head make_tiles.pbs		
+	fi
+	nprods=$(ls $odir/$PID.irac.tile.*mosaic*.fits | wc -l)
+	if [ $nmos -eq $nsub ]; then
+		ec "# All jobs build all expected outputs ... "
+		ec "# Found $nmos tiles, and $nprods products"
+		rm -f make_tiles.pbs
+	fi
 
-	# 2. check .log files (from mopex) for other errors
+	# 3. check .log files (from mopex) for other errors
 	errfile=$module.err
 	grep -i -e Error -e Exception -e MALLOC ${module}_*.log > $errfile
 	grep ^System\ Exit  ${module}_*.log | grep -v ' 0' >> $errfile

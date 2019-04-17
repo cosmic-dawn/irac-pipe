@@ -1100,9 +1100,9 @@ def make_tile(JobNo,JobList):
     # temporary files:
     # use local scratch area on process node, if large, to avoid heavy network usage
     if (locnode == 'n04') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
-        processTMPDIR = '/'+locnode+'data/tmpdir_'+PIDname+'_tile_' + str(JobNo) #+ '/'
+        processTMPDIR = '/'+locnode+'data/tmpdir_'+PIDname+'_j' + str(JobNo) #+ '/'
     else:
-        processTMPDIR = '/scratch/tmpdir_'+PIDname+'_tile_' + str(JobNo) #+ '/'
+        processTMPDIR = '/scratch/tmpdir_'+PIDname+'_j' + str(JobNo) #+ '/'
     
     shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one

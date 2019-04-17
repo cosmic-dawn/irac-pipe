@@ -3,7 +3,7 @@
 #PBS -N mkTile_@JOB@_@PID@
 #PBS -o make_tile_@JOB@.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=11,walltime=48:00:00
+#PBS -l nodes=1:ppn=7,walltime=32:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     make_tile.sh @INFO@
@@ -68,9 +68,9 @@ PID=$(grep  '^PIDname '     $pars | cut -d\' -f2)
 
 # dir on processing node for temp data ... to be deleted at end if all outputs produced
 if [[ $node == 'n04' ]] || [[ $node == 'n07' ]] || [[ $node == 'n08' ]] || [[ $node == 'n09' ]]; then 
-	procTmpDir=/${node}data/tmpdir_${PID}_tile_$jobNo
+	procTmpDir=/${node}data/tmpdir_${PID}_j$jobNo
 else
-	procTmpDir=/${node}data/scratch$(echo $node | tr -d n)/tmpdir_${PID}_tile_$jobNo
+	procTmpDir=/scratch$(echo $node | tr -d n)/tmpdir_${PID}_j$jobNo
 #	procTmpDir=/scratch/tmpdir_${PID}_tile_$jobNo
 fi
 
@@ -105,9 +105,10 @@ nline=$(($jobNo+5))  # line number for job
 outf=$(sed "${nline}q;d" $tlf | awk '{printf "'$PID'.irac.tile.%s.%s.mosaic.fits",$2,$3}')
 outp=$(sed "${nline}q;d" $tlf | awk '{printf "'$PID'.irac.tile.%s.%s.*mosaic*.fits",$2,$3}')
 
-mc=$(grep ^run_median_mosaic cdf/tile_par.nl | cut -c21)  # chk if median_mosaic was done
+#mc=$(grep ^run_median_mosaic cdf/tile_par.nl | cut -c21)  # chk if median_mosaic was done
+#if [ $mc -eq 1 ]; then nexp=6; else nexp=4; fi  # ... should be 4 or 6 
 np=$(ls -l $odir/$outp | wc -l)  # number of products built ...
-if [ $mc -eq 1 ]; then nexp=6; else nexp=4; fi  # ... should be 4 or 6 
+nexp=6
 
 if [ $np -eq $nexp ]; then 
 	echo ">> Job $jobNo Done: built $np $odir/$outf and partners ... Good job!!"
@@ -129,10 +130,10 @@ exit 0
 echo "## Some diagnostic info ...."
 ls -lh $procTmpDir/Coadd-mosaic/*.fits 
 ls -lh $procTmpDir/Combine-mosaic/*.fits 
-ls -lh Products/mini.irac.tile.5.1.*.fits
+ls -lh $odir/$outp
 
-grep ^${mexec} test.log | tr -s \  | cut -d\  -f1-4 | uniq  > test.stp
-grep "^System Exit" test.log | uniq >> test.stp
+grep ^${mexec} make_tile_${jobNo}.log | tr -s \  | cut -d\  -f1-4 | uniq  > test.stp
+grep "^System Exit" make_tile_${jobNo}.log | uniq >> test.stp
 echo "# steps done: $(grep mopex test.stp | wc -l)  $(grep Exit test.stp | wc -l)"
 grep 64 test.stp
 cp test.log test_$node.log
