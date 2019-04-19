@@ -42,24 +42,26 @@ chans=$(grep irac $tlf | sort -u -nk3 | tr -s \  | cut -d\  -f4)
 glhead=global.head
 
 mycd $odir
-args="-WEIGHT_SUFFIX _cov.fits -WEIGHT_TYPE MAP_WEIGHT -VERBOSE_TYPE QUIET "
+args="-WEIGHT_SUFFIX _cov.fits -WEIGHT_TYPE MAP_WEIGHT -VERBOSE_TYPE LOG "
 resy="-RESAMPLE Y  -RESAMPLING_TYPE LANCZOS2 "
 resn="-RESAMPLE N "
 
 for c in $chans; do 
-	list=${PID}_ch${c}.lst
-	ls $PID.irac.tile.*.${c}.mosaic.fits > $list   # build list of tiles
+	root=mosaic_ch${c}
+	list=$root.lst
+	ls $PID.irac.tile.*.${c}.mosaic.fits > $list        # build list of tiles
 	echo "# Found $(cat $list | wc -l) tiles for chan $c"
-	mos=mosaic_ch${c}.fits
+	mos=${root}_new.fits
 	wgt=${mos%.fits}_cov.fits
-	ln -sf $glhead ${mos%.fits}.head    # build link to global head file
+	#rm ${mos%.fits}.head
+	ln -sf $glhead ${mos%.fits}.head         # build link to global head file
 	comm="swarp @$list -IMAGEOUT_NAME $mos -WEIGHTOUT_NAME $wgt  $args $resy"
 	echo $comm
 	if [ $dry -eq 1 ]; then
 		echo "# dry mode: do nothing ..."
 	else
 		$comm
-		ls -lh mosaic_ch${c}*.fits
+		ls -lh $mos $wgt
 	fi
 done
 

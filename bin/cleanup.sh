@@ -39,7 +39,7 @@ echo " remove command etc. files"
 if [ $keep -eq 1 ]; then
 	mv *.sh *.py *.out *.qall *.err addkey* FIF.tbl $1
 	mv medians $odir  cdf  supermopex.py  irac.log $1
-	rm -rf temp__pycache__ 
+	rm -rf temp __pycache__ 
 else
 	rm -f *.sh *.py *.out *.qall *.err addkey* FIF.tbl cdf/log_*  # supermopex.py
 	rm -rf temp __pycache__ medians/* $odir/* countFiles.dat irac.log

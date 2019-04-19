@@ -68,10 +68,9 @@ PID=$(grep  '^PIDname '     $pars | cut -d\' -f2)
 
 # dir on processing node for temp data ... to be deleted at end if all outputs produced
 if [[ $node == 'n04' ]] || [[ $node == 'n07' ]] || [[ $node == 'n08' ]] || [[ $node == 'n09' ]]; then 
-	procTmpDir=/${node}data/tmpdir_${PID}_j$jobNo
+	procTmpDir=/${node}data/tmpdir_${PID}_tile_j$jobNo
 else
-	procTmpDir=/scratch$(echo $node | tr -d n)/tmpdir_${PID}_j$jobNo
-#	procTmpDir=/scratch/tmpdir_${PID}_tile_$jobNo
+	procTmpDir=/scratch$(echo $node | tr -d n)/tmpdir_${PID}_tile_j$jobNo
 fi
 
 # Build the command line
