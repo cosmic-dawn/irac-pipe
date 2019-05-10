@@ -17,7 +17,13 @@
 #RAW=/n08data/Spitzer/XMM-LSS  # ==> /n09data/XMM
 #RAW=/n08data/Spitzer/COSMOS   # ==> /n09data/COSM
 #RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmctr    central part of COSMOS field
-RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmos155   r155* AORs (45) of COSMOS field
+#RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmos155   r155* AORs (45) of COSMOS field
+
+loc=$(pwd | cut -d\/ -f3)   # nominally name of Spitzer field 
+
+if [ $loc == 'mini' ]; then loc=COSMOS; fi  
+RAW=/n08data/Spitzer/$loc    
+echo "Raw data linked from $RAW"  #; exit
 
 if [ ! -d AllData ]; then mkdir AllData Data cal; fi
 
@@ -39,8 +45,9 @@ else   # get only data in shortlist
 	cd Data; echo " --> $PWD"
 	for a in $(cat ../shortlist); do 
 		for d in ${RAW}/$a/ch?/bcd; do 
-			r=$(echo $d | cut -d\/ -f5-7); echo " $d  ==>  ./$r"
+			r=$(echo $d | cut -d\/ -f5-7) #; echo " $d  ==>  ./$r"
 			if [ ! -d $r ]; then mkdir -p $r; fi
+			echo "ln -sf $d/SPI*_[b,c]*.fits ./$r"
 			ln -sf $d/SPI*_[b,c]*.fits ./$r
 		done
 	done
