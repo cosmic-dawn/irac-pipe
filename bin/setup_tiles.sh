@@ -52,7 +52,6 @@ mycd $WRK
 comm="python $module.py"
 
 echo " - Work dir is:  $WRK"
-echo " - Command is: $comm"
 echo " - Starting on $(date) on $(hostname)"
 echo " - command line is: "
 echo " % $comm"

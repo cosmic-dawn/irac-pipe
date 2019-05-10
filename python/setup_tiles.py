@@ -11,17 +11,16 @@ import os,shutil
 from functools import partial
 import multiprocessing as mp
 
-#read in the log file
-#log = ascii.read(LogFile,format="commented_header",header_start=-1)
+#read in the log file and get irac info
 rawlog = ascii.read(LogTable,format="ipac")
-#get just IRAC info
 logIRAC = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
-#logMIPS = rawlog[:][(rawlog['Instrument']=='MIPS').nonzero()]
 
+# AMo: name of table with all tiles - before discarding those tiles with no data
 AllTiles = OutputDIR + PIDname + '.all_mosaic_tiles.tbl'
-#Do IRAC if there are IRAC files
-if (len(logIRAC) > 0):
 
+if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
+
+    # AMo: to avoid doing this all the time when testing bottom part.
     if not os.path.isfile(AllTiles):
         #make the common FIF for the mosaics
         FIFlist = OutputDIR + PIDname + '.irac.FIF.' + corDataSuffix + '.lst' 
@@ -116,14 +115,16 @@ if (len(logIRAC) > 0):
         #write it out
         ascii.write(JobList, AllTiles, format="ipac",overwrite=True)
 
-        
-    JobList = ascii.read(AllTiles, format="ipac")
+    else:
+        JobList = ascii.read(AllTiles, format="ipac")
+
     Njobs = len(JobList)
 
     print("Built job list {} with {} jobs".format(AllTiles, Njobs))
 
     #now lets run mosaic geometry to see if there are any files in each tile
     nproc=int(2*Nproc/3)
+#    nproc=24
     print("Finding exposures for each tile with {} threads".format(nproc))
     pool = mp.Pool(processes=nproc)
     results = pool.map(partial(run_mosaic_geometry,JobList=JobList), range(0,Njobs))

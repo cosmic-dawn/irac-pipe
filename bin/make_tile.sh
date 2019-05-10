@@ -75,9 +75,17 @@ fi
 
 # Build the command line
 comm="python $module.py $jobNo"
+# get time no. and chan
+tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) #; echo "$PID, $tlf"; exit
+tlf=${odir}/${PID}$tlf                            #; echo "$PID, $tlf"
+
+nline=$(($jobNo+5))
+tlf${odir}/${PID}.mosaic_tile_list.tbl
+outf=$(sed "${nline}q;d" $tlf | awk '{printf "for tile %s, chan %s",$2,$3}')
 
 echo " - Work dir is:      $WRK"
-echo " - Command is:       $comm"
+echo " - Command line:     $comm"
+echo " - Job no. $jobNo is $outf"
 echo " - mosaic.pl from:   $mexec"
 echo " - Process temp dir: $procTmpDir "
 echo " - Start on $(date) on $node"
@@ -97,10 +105,6 @@ echo ">> ==========   End python output   ========== "
 echo ""
 
 # check that the tile is built
-tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) #; echo "$PID, $tlf"; exit
-tlf=${odir}/${PID}$tlf                            #; echo "$PID, $tlf"
-
-nline=$(($jobNo+5))  # line number for job
 outf=$(sed "${nline}q;d" $tlf | awk '{printf "'$PID'.irac.tile.%s.%s.mosaic.fits",$2,$3}')
 outp=$(sed "${nline}q;d" $tlf | awk '{printf "'$PID'.irac.tile.%s.%s.*mosaic*.fits",$2,$3}')
 
@@ -120,9 +124,9 @@ else
 fi
 
 echo ""
-echo "------------------------------------------------------------------"
-echo " >>>>  $module $jobNo finished on $(date) - walltime: $(wt)  <<<<"
-echo "------------------------------------------------------------------"
+echo "------------------------------------------------------------------------------"
+echo " >>>>  $module $jobNo finished on $(date) - node $node, unix walltime: $(wt)  <<<<"
+echo "------------------------------------------------------------------------------"
 echo ""
 exit 0
 

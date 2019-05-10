@@ -134,20 +134,18 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     
     #make the list of files for this AOR and Channel
     LogIDX = ((log['Channel']==Ch) & (log['AOR']==AOR)).nonzero()  # get the indexes of files we should use
-    files = log['Filename'][LogIDX]
-    MJDs = log['MJD'][LogIDX]
-    RAs  = log['RA'][LogIDX]
-    DECs = log['DEC'][LogIDX]
+    files  = log['Filename'][LogIDX]
+    MJDs   = log['MJD'][LogIDX]
+    RAs    = log['RA'][LogIDX]
+    DECs   = log['DEC'][LogIDX]
     
-    Nframes = len(files)
-    
-#    print('Finding stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
-    print('Finding stars in job {:5d} of {:5d} AOR {} Channel {}'.format(JobNo, Njobs, AOR, Ch))
+    Nframes = len(files)    
+    print('## Begin job {:4d}: AOR {:8d} / Ch {}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
     
     for fileNo in range(0,Nframes):
-        MJD = MJDs[fileNo]
-        frameRA = RAs[fileNo]
-        frameDEC= DECs[fileNo]
+        MJD      = MJDs[fileNo]
+        frameRA  = RAs[fileNo]
+        frameDEC = DECs[fileNo]
         filename = files[fileNo]
         
         #Get the image center for figuring out which objects to consider
@@ -202,8 +200,8 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         BrightStarTable = inputCat
         ascii.write(Table(rows=BrightInFrame,names=['ra','dec']),BrightStarTable,format="ipac",overwrite=True)
         
-#        print('Finding bright stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData) #,end="\r")
-        print('Finding bright stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData))
+        print(' - Frame {:3d}; {:}:'.format(fileNo +1, inputData.split('/')[-1]), end=' ')
+        print(' find bright stars ...', end=' ')
         
         #do the bright stars for star subtraciton
         command = "apex_user_list_1frame.pl -n findstar.nl -p " + PRF[cryo][Ch-1] + " -u " + BrightStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
@@ -224,8 +222,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         FitStarTable = inputCatAstro
         ascii.write(Table(rows=AstroInFrame,names=['ra','dec']),FitStarTable,format="ipac",overwrite=True)
 
-#        print('Finding astrometry stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData) #,end="\r")
-        print('Finding astrometry stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData))
+        print('astrometry stars')
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -237,6 +234,9 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         #clean up
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
+        
+    print('## Finished job {:4d}'.format(JobNo))
+
 
 #routine to find stars in order to check the astrometry solution
 def checkstar(JobNo,JobList,log,AstrometryStars):
@@ -253,9 +253,8 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
     DECs = log['DEC'][LogIDX]
     
     Nframes = len(files)
-    
-#    print('Checking stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
-    print('Checking stars in job {:5d} of {:5d} AOR {:} Channel {:}'.format(JobNo, Njobs, AOR, Ch))
+
+    print('Checking stars in job {:5d}: AOR {:} Channel {:}'.format(JobNo, Njobs, AOR, Ch))
  
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -296,8 +295,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         #write out catalog for Astrometry stars
         FitStarTable = inputCatAstro
 
-#        print('Finding astrometry stars in ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + inputData) #,end="\r")
-        print('Finding astrometry stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData))
+        print('Finding astrometry stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData.split('/')[-1]))
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -310,6 +308,8 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
+    print('## Finished job {:4d}'.format(JobNo))
+    
 def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     
     ChMax =  JobList['ChannelMax'][JobNo]
@@ -423,7 +423,6 @@ def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     #count the number of stars left
     GoodStars=ma.count(dRA)
     
-#    print('Processing Exposure ' + str(JobNo+1) + ' of ' + str(Nrows) + ' using ' + str(GoodStars) + ' stars.  Offset is dRA = ' + str(corrRA*3600) + ' +/- ' + str(3600*sig_RA/np.sqrt(GoodStars)) + ' dDEC = ' + str(corrDEC*3600) + ' +/- ' + str(3600*sig_DEC/np.sqrt(GoodStars))) #,end="\r")
     print('Processing Exposure {:6d} of {:6d} using {:5d} stars.  Offset is dRA = {:10.6f} +/- {:8.6f}; dDEC = {:10.6f} +/- {:8.6f}'.format(JobNo+1, Nrows, GoodStars, corrRA*3600, 3600*sig_RA/np.sqrt(GoodStars), corrDEC*3600, 3600*sig_DEC/np.sqrt(GoodStars) ))
     
     astrofix = np.array([JobNo,corrRA,corrDEC,sig_RA/np.sqrt(GoodStars),sig_DEC/np.sqrt(GoodStars),GoodStars],dtype=np.double)
@@ -562,8 +561,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
     
     Nframes = len(files)
     
-#    print('Subtracting stars in job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
-    print('Subtracting stars in job {:4d} of {:4d} AOR {:} Channel {:}'.format(JobNo, Njobs, AOR, Ch))
+    print('## Begin job {:4d}: AOR {:} / Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
 
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -699,19 +697,17 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
                     GhostMask =np.sqrt(((StarIndex[1]-gx)**2) + ((StarIndex[0]-gy)**2))
                     starMaskHDU[0].data[(GhostMask<=PRFghostR[cryo][Ch-1]).nonzero()]=32767
 
-#            print('Writing corrected file ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + SubtractedFile) #,end='\r')
-            print('Writing corrected file {} of {}; {})'.format(fileNo +1, Nframes, SubtractedFile))
             bandcorrHDU.writeto(SubtractedFile,overwrite='True')  #write out the final star subtracted image
             bandcorrHDU.close()
             starMaskHDU.writeto(SubtractedMask,overwrite='True')  #write out the modified star mask
             starMaskHDU.close()
         else:
-#            print('Writing corrected file ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + SubtractedFile) #,end='\r')
-            print('Writing corrected file {} of {}; {})'.format(fileNo +1, Nframes, SubtractedFile))
             shutil.move(residualImage,SubtractedFile)
             shutil.copy(MaskFile,SubtractedMask)
 
-        #clean up
+        print(' - Wrote corrected frame {:3d}: {}'.format(fileNo +1, SubtractedFile.split('/')[-1]))
+
+        # clean up
         #wait for file to be in place
         while os.path.exists(SubtractedMask) == 'False' :
             wait = 1
@@ -721,6 +717,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
+    print('## Finished job {:4d}'.format(JobNo))
 
 
 def subtract_median(JobNo,JobList,log,AstroFix):
@@ -747,7 +744,6 @@ def subtract_median(JobNo,JobList,log,AstroFix):
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
 
-#    print("Procesing AOR " + str(AOR) + " channel " + str(Ch) + " with " + str(Nframes) + " frames")
     print('Processing AOR {} Chan {} with {} frames'.format(AOR, Ch, Nframes))
 
     for frame in range(0,Nframes):
@@ -884,24 +880,23 @@ def make_median_image(JobNo,JobList,log,AORlog):
     NrepFrames = int(Nframes/Nrepeats) #Calculate the number of repeate frames
 
     if HDR == 'True':
-        print('AOR ' + str(AOR) + ' is in HDR mode.')
-        print('AOR ' + str(AOR) + ' has ' + str(Nrepeats) + ' observations at each position.')
-        print('The Exposure times are: ' + str(Exptimes))
+        print('## AOR {} in HDR mode; has {} observations at each position,'.format(AOR, Nrepeats), end=' ')
+        print(' . Exposure times are: {}'.format(Exptimes))
     else:
-        print('AOR ' + str(AOR) + ' is in Standard mode.')
-        print('AOR ' + str(AOR) + ' has ' + str(Nrepeats) + ' observations at each position.')
+        print('## AOR {} in Standard mode; has {} observations at each position,'.format(AOR, Nrepeats), end=' ')
         if Nrepeats > 1:
-            print('There are ' + str(Nframes) + ' total frames, ' + str(NrepFrames) + ' per repeate')
+            print('has {} frames, {} per repeat.'.format(Nframes, NrepFrames))
         else:
-            print('There are ' + str(Nframes) + ' total frames.')
+            print('has {} frames.'.format(Nframes))
 
     #lets do some error checking
-    if (Nframes == NrepFrames*Nrepeats):
-        print('Correct number of total frames, lets go!')
-    else:
-        print('Total number of frames, number of repeates, and repeates per frame disagree!')
+    if (Nframes != NrepFrames*Nrepeats):
+#        print('Check number of total frames ... correct!')   ##DEBUG
+#    else:
+        print('ERROR: Total number of frames, number of repeats, and repeats per frame disagree!')
 
-    print('Reading ' + str(Nframes) + ' Images from AOR ' + str(AOR) + ' Channel ' + str(Ch))
+#    print('## Read ' + str(Nframes) + ' Images from AOR ' + str(AOR) + ' Channel ' + str(Ch))
+    print('## Read {} Images for ch {} '.format(Nframes, Ch))
 
     for frame in range(0,Nframes):
         BCDfilename = files[frame]
@@ -1012,7 +1007,7 @@ def make_median_image(JobNo,JobList,log,AORlog):
             
             #write the output file
             outputFile = AORoutput + 'average.' + str(AOR) + '.' + repeats[repIDX] + '.ch.' + str(Ch) + '.fits'
-            print('Writing ' + outputFile)
+            print(' . Writing ' + outputFile, end=' ... ')
             fits.writeto(outputFile,output_data,overwrite='True')
             
             #make the output background
@@ -1021,7 +1016,7 @@ def make_median_image(JobNo,JobList,log,AORlog):
             
             #write the output file
             outputFile = AORoutput + 'median.' + str(AOR) + '.' + repeats[repIDX] + '.ch.' + str(Ch) + '.fits'
-            print('Writing ' + outputFile)
+            print(outputFile.split('/')[-1])
             fits.writeto(outputFile,output_data,overwrite='True')
     else:
         repIDX=0
@@ -1043,18 +1038,17 @@ def make_median_image(JobNo,JobList,log,AORlog):
         output_data=ma.filled(output_image,fill_value=0)
         
         #write the output file
-        outputFile = AORoutput + 'average.' + str(AOR) + '.' + repeats[repIDX] + '.ch.' + str(Ch) + '.fits'
-        print('Writing ' + outputFile)
-        fits.writeto(outputFile,output_data,overwrite='True')
+        outputAve = AORoutput + 'average.' + str(AOR) + '.' + repeats[repIDX] + '.ch.' + str(Ch) + '.fits'
+        fits.writeto(outputAve,output_data,overwrite='True')
         
         #make the output background
         output_image=ma.median(imageData,axis=0) #median works better
         output_data=ma.filled(output_image,fill_value=0)
         
         #write the output file
-        outputFile = AORoutput + 'median.' + str(AOR) + '.' + repeats[repIDX] + '.ch.' + str(Ch) + '.fits'
-        print('Writing ' + outputFile)
-        fits.writeto(outputFile,output_data,overwrite='True')
+        outputMedi = AORoutput + 'median.' + str(AOR) + '.' + repeats[repIDX] + '.ch.' + str(Ch) + '.fits'
+        fits.writeto(outputMedi,output_data,overwrite='True')
+        print('==> Wrote {} and {} '.format(outputAve, outputMedi.split('/')[-1]))
 
 def run_mosaic_geometry(JobNo,JobList):
     
@@ -1062,7 +1056,7 @@ def run_mosaic_geometry(JobNo,JobList):
     
     #temporary files
     pid = os.getpid() #get the PID for temp files
-    processTMPDIR = TMPDIR + 'tmpfiles_mg_' + str(JobNo) + '/'
+    processTMPDIR = TMPDIR + 'tmpdir_mg_' + str(JobNo) + '/'
     os.system('mkdir -p ' + processTMPDIR)
     
     #input lists
@@ -1072,7 +1066,7 @@ def run_mosaic_geometry(JobNo,JobList):
     geomlist = processTMPDIR + 'geom_' + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     
     #Run Mosaic
-    logfile = processTMPDIR + '/setup_tiles_job'+str(JobNo)+'.log'
+    logfile = processTMPDIR + 'setup_tiles_job'+str(JobNo)+'.log'
     cmd = 'mosaic.pl -n ' +IRACTileGeomConfig+ ' -I ' +imagelist+ ' -F' +JobList['FIF'][JobNo]+ ' -O ' +processTMPDIR+ ' > '+logfile+' 2>&1'
     print(cmd)
     os.system(cmd)
@@ -1100,13 +1094,12 @@ def make_tile(JobNo,JobList):
     # temporary files:
     # use local scratch area on process node, if large, to avoid heavy network usage
     if (locnode == 'n04') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
-        processTMPDIR = '/'+locnode+'data/tmpdir_'+PIDname+'_j' + str(JobNo) #+ '/'
+        processTMPDIR = '/'+locnode+'data/tmpdir_'+PIDname+'_tile_j' + str(JobNo) #+ '/'
     else:
-        processTMPDIR = '/scratch/tmpdir_'+PIDname+'_j' + str(JobNo) #+ '/'
+        processTMPDIR = '/scratch/tmpdir_'+PIDname+'_tile_j' + str(JobNo) #+ '/'
     
     shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
-    os.system('touch ' +processTMPDIR+ '/testfile')
 
     if os.path.dirname(processTMPDIR):
         print(">> Clean temp dir {} created".format(processTMPDIR))
@@ -1140,13 +1133,22 @@ def make_tile(JobNo,JobList):
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
     
     mosaicunc = basename + str(Ch) + '.mosaic_unc.fits'
-    shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
-    
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
+    except:
+        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_unc.fits not found")
+
     mosaiccov = basename + str(Ch) + '.mosaic_cov.fits'
-    shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
+    except:
+        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_cov.fits not found")
     
     mosaicstd = basename + str(Ch) + '.mosaic_std.fits'
-    shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
+    except:
+        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_std.fits not found")
 
     # copy the output RMASKS to an area so they can be combined
     RMaskOutdir = RMaskDir + 'tile_' + str(Tile)
@@ -1165,15 +1167,18 @@ def make_tile(JobNo,JobList):
         shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic.fits',medmosaic)
     except:
         print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic.fits not found")
-        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.fits instead")
-        shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.fits', medmosaic)
+        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead")
+        os.system("cp -v {}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {}".format(processTMPDIR, medmosaic))
+        # shutil.copy doesn't take wildcards
+        #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts', medmosaic)
 
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
     except:
         print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic_unc.fits not found")
-        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image_Unc.fits instaed")
-        shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.fits',medmosaicunc)
+        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
+        os.system("cp -v {}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {}".format(processTMPDIR, medmosaicunc))
+        #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts',medmosaicunc)
     
     # clean up:  done in shell script if all products found
     cleanupCMD = 'rm -rf ' + processTMPDIR

@@ -44,14 +44,11 @@ StarData = ascii.read(GaiaTable,format="ipac") #read the data
 #StarMatch = SkyCoord(StarData['ra'],StarData['dec'])
 
 
-print("Starting astrometry fix with " + str(Nproc) + " threads.")
+print("Starting fix_astrometry on {} jobs with {} threads.".format(Nrows, Nproc))
 
 pool = mp.Pool(processes=Nproc)
 results = pool.map(partial(fix_astrometry,log=log,Nrows=Nrows,JobList=JobList,AstrometryStars=StarData), range(0,Nrows))
 pool.close()
-
-#for i in range(0,Nrows):
-#fix_astrometry(109)
 
 DCElist = log['DCE']
 OutputList=list()

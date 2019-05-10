@@ -17,25 +17,26 @@
 # v1.11: chk_dry and submit included in write_module; fixed but in get_catals;
 #        get NODE variable from $WRK
 # v1.20: split make_mosaic to run each chan on a different node, and get NODE
-#        and NPROC from supermopex.py (22.Dec.18)
+#        and NPROC from supermopex.py                              (22.Dec.18)
 # v1.30: add logging to irac.log and purpose details to local supermopex.py 
 #        and wrapper shell scripts 
 # v1.40: various fixes (and to make_medians, subtract_medians, build_mosaic)
-#        to handle HDR files  (30.Dec.18)
+#        to handle HDR files                                       (30.Dec.18)
 # v1.41: minor fixes (mostly to scripts)
 # v1.42: minor fixes (mostly to scripts)
-# v1.50: split build_mosaic in two parts  (17.Jan.19)
-# v2.00: using new scripts from Peter Capak, ex. make_mosaics (27.Feb.19)
-# v2.10: with parallelised version of make_mosaics (13.Mar.19)
-# v2.11: add check_stars and check_astrom; other details (26.mar.19)
-# v2.12: add use_rel var to select devel or release scripts; etc. (29.mar.19)
-# v2.13: minor reorganisation of code; minor other changes(13.apr.19)
-# v2.14: improve handling of large number of jobs in make_tiles (16.apr.18)
+# v1.50: split build_mosaic in two parts                           (17.Jan.19)
+# v2.00: using new scripts from Peter Capak, ex. make_mosaics      (27.Feb.19)
+# v2.10: with parallelised version of make_mosaics                 (13.Mar.19)
+# v2.11: add check_stars and check_astrom; other details           (26.mar.19)
+# v2.12: add use_rel var to select devel or release scripts; etc.  (29.mar.19)
+# v2.13: minor reorganisation of code; minor other changes         (13.apr.19)
+# v2.14: improve handling of large number of jobs in make_tiles    (16.apr.18)
+# v2.15: fix logfiles, checks on products, improve logging         (26.apr.16) 
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.14 (16.apr.19)"
+vers="2.15 (26.apr.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -48,6 +49,28 @@ else
 	if [[ $1 =~ "ver" ]]; then 
 		echo ">> $0 version $vers"; exit 0
 	fi 
+fi
+
+#-----------------------------------------------------------------------------
+# Load needed softs and set PATHs
+#-----------------------------------------------------------------------------
+
+module () {	 eval $(/usr/bin/modulecmd bash $*); }
+module purge ; module load intelpython/3   mopex 
+
+#-----------------------------------------------------------------------------
+# setup dry and auto-continue modes
+#-----------------------------------------------------------------------------
+
+dry=F       # dry mode - do nothing
+auto=F      # auto-continue defined at each step
+xdone=F     # set to T when one part is executed; else will give list of options
+
+# if last param is 'dry' or 'test' then set dry mode
+if [ "${@: -1}" == 'dry' ] || [ "${@: -1}" == 'test' ]; then dry=T; fi
+
+if [ $1 == "pars" ]	 || [ $1 == "env" ]; then
+	dry=T
 fi
 
 #-----------------------------------------------------------------------------
@@ -76,7 +99,11 @@ get_nproc() {
 }
 
 if [[ $(hostname) =~ "candid" ]]; then
-	Nproc=$(($(get_nproc) - 3))
+	if [ -e supermopex.py ]; then 
+		Nproc=$(grep  '^Nproc' supermopex.py | tr -s ' ' | cut -d\  -f3)
+	else
+		Nproc=$(($(get_nproc) - 3))
+	fi
 else
 	echo "####"
 	echo "####----------------------------------------------------"
@@ -84,7 +111,7 @@ else
 	echo "####----------------------------------------------------"
 	echo "####"
 	Nproc=0    # to avoid giving unbound variable error
-
+	if [ $dry == "F" ]; then exit 1; fi 
 fi
 
 #-----------------------------------------------------------------------------
@@ -110,7 +137,7 @@ mycd() {  # cd with check
 
 askuser() {  # ask user if ok to continue
 	echo -n " ==> Is this ok? (yes/no):  "  >> $pipelog
-	while true; do read -p " ==> Is this ok? (yes/no): " answer
+	while true; do read -p " ====> Ok to continue? (yes/no): " answer
 		echo $answer  >> $pipelog
 		case $answer in
 			[yYpl]* ) ec "Continue ..."; break	;;
@@ -136,7 +163,8 @@ chk_prev() {  # check given step is done (presence of .out file)
 write_module() {  # write local verions of py and sh modules
 	info="for $WRK, built $(date +%d.%h.%y\ %T)"
 	sed -e "s|@NPROC@|$Nproc|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
-		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|"  $bindir/$module.sh > ./$module.sh
+		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|" -e "s|USE_REL|$use_rel|" \
+		$bindir/$module.sh > ./$module.sh
 	chmod 755 $module.sh
 	ec "# Wrote $module.sh"
 	if [ $dry == "T" ]; then ec "----  EXITING DRY MODE	 ---- "; exit 10; fi
@@ -146,7 +174,7 @@ write_module() {  # write local verions of py and sh modules
 	ec "# -- Wait for job to finish --"; sleep 20
 	while :; do [ -e $module.out ] && break; sleep 30; done
 	chmod 644 $module.out
-	ec "# Job $module finished - $(grep RESOURCESUSED $module.out | cut -d\, -f4)"
+	ec "# Job $module finished - PBS $(grep RESOURCESUSED $module.out | cut -d\, -f4)"
 }
 
 chk_outputs() {	 # check outputs of module
@@ -176,28 +204,25 @@ end_step() {
 		exit 0
 	fi
 }
-#-----------------------------------------------------------------------------
-# Load needed softs and set PATHs
-#-----------------------------------------------------------------------------
-
-module () {	 eval $(/usr/bin/modulecmd bash $*); }
-module purge ; module load intelpython/3   mopex 
-
-#-----------------------------------------------------------------------------
-# setup dry and auto-continue modes
-#-----------------------------------------------------------------------------
-
-dry=F       # dry mode - do nothing
-auto=F      # auto-continue defined at each step
-xdone=F     # set to T when one part is executed; else will give list of options
-#use_rel=F   # to use released (T) or development (F) scripts
-
-# if last param is 'dry' or 'test' then set dry mode
-if [ "${@: -1}" == 'dry' ] || [ "${@: -1}" == 'test' ]; then dry=T; fi
-
-if [ $1 == "pars" ]	 || [ $1 == "env" ]; then
-	dry=T
-fi
+chkmeds() {  # check for presence of products of subtract_medians
+    # loop over files.aor...tbl tables
+	for f in $mdir/files.*.tbl; do               
+		aordir=$(tail -1 $f | cut -d\/ -f1-7)   #; echo $aordir; exit
+		# loop over filenames found in files.aor.ch.#.tbl  file
+		for i in $(grep _bcd.fits $f | cut -d' ' -f2); do
+			if [ ! -e ${i%_bcd.fits}_sub.fits ]; then 
+				s1=$(echo ${i%_bcd.fits}_sub.fits | cut -d\/ -f5-8)
+				echo "  PROBLEM: ${s1} not found"
+			elif [ ! -e ${i%_bcd.fits}_sbunc.fits ]; then
+				s2=$(echo ${i%_bcd.fits}_sbunc.fits | cut -d\/ -f5-8)
+				echo "  PROBLEM: ${s2} not found"
+			fi
+		done
+	done
+}
+wt() {   # to get wall time
+	echo "$(date "+%s.%N") $bdate" | awk '{printf "%0.2f hrs\n", ($1-$2)/3600}'
+}
 
 #-----------------------------------------------------------------------------
 # Variables useful for processing:
@@ -301,7 +326,6 @@ if [[ ! -z $(ls $odir) ]]; then
 	ec "##### ATTN: Products dir $odir not empty ..."
 	if [ $dry == 'F' ]; then askuser; fi
 fi
-ec ""
 
 ec "#-----------------------------------------------------------------------------"
 ec "##  Begin Spitzer data reduction pipeline	 "
@@ -319,9 +343,12 @@ if [ $1 == "setup" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=setup_pipeline
 	chk_prev NULL 
+	bdate=$(date "+%s.%N")       # start time/date
 	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
 
-	write_module; chk_outputs
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	chk_outputs
 
 	# other results
 	Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
@@ -346,6 +373,10 @@ if [ $1 == "setup" ]; then
 	cd $WRK
 
 	ec "# Details by AOR in countFiles.dat "
+	naor=$(cat countFiles.dat | wc -l)
+	nzer=$(grep -o \ 0\  countFiles.dat | wc -l)
+	ec "# Number of AOR x valid channels:  $(($naor*4 -  $nzer))"
+
 	end_step
 fi
 
@@ -361,12 +392,13 @@ if [ $1 == "catals" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=get_catalogs 
 	chk_prev setup_pipeline
+	bdate=$(date "+%s.%N")       # start time/date
 
-	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
 	if [ $(hostname) == "candid01.iap.fr" ]; then
 		echo "# Running ${module}.py on login node" > ${module}.out
 		echo "" >> ${module}.out
 		python ${module}.py >> ${module}.out 2>&1
+		ec "# Job $module finished - unix walltime=$(wt)"
 	else
 		ec "PROBLEM: can't run on $(hostname) to get external catals ... quitting"
 		exit 12
@@ -379,7 +411,6 @@ if [ $1 == "catals" ] || [ $auto == "T" ]; then
 		ec "PROBLEM: found $nerr errors in .out files ... check file $errfile"
 		head -6 $errfile ; askuser
 	fi
-	ec "# Job $module finished - walltime=n/a"
 	ec "# ==> no errors found ... continue "; rm -f $errfile 
 	grep range $module.out | \
 		awk '{printf "[INFO]  %3s in range %6.2f -- %6.2f\n", $1,$4,$6}' | tee -a $pipelog
@@ -399,8 +430,13 @@ if [ $1 == "ffcorr" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=first_frame_corr
 	chk_prev get_catalogs
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs; end_step
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	# fix logfile (missing CRs)
+	strings $module.out | sed 's/fits)Read/fits)\nRead/' > xx; mv xx $module.out
+	chk_outputs; end_step
 fi
 
 
@@ -408,7 +444,7 @@ fi
 ### -  4. find:      find_stars
 #-----------------------------------------------------------------------------
 
-if [ $1 == "find" ] || [ $auto == "T" ]; then
+if [ $1 == "find_stars" ] || [ $1 == "find" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -416,17 +452,32 @@ if [ $1 == "find" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=find_stars
 	chk_prev first_frame_corr
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs; end_step
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
 	# fix logfile (missing CRs)
-	sed -i 's/sFind/s\nFind/' $module.out
+	strings $module.out | sed -e 's/fitsFind/fits\nFind/' -e 's/fitsBeg/fits\nBeg/' > xx; mv xx $module.out
+
+	chk_outputs
+	# any aborted jobs??
+	grep -i aborted $module.out > $module.aborted
+	nab=$(cat $module.aborted | wc -l)
+	if [ $nab -ne 0 ]; then
+		ec "WARNING: $nab jobs aborted ... see $module.aborted"
+		askuser
+	else
+		rm $module.aborted
+	fi
+
+	end_step
 fi
 
 #-----------------------------------------------------------------------------
 ### -  5. merge:     merge stars
 #-----------------------------------------------------------------------------
 
-if [ $1 == "merge" ] || [ $auto == "T" ]; then
+if [ $1 == "merge_stars" ] || [ $1 == "merge" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -434,15 +485,18 @@ if [ $1 == "merge" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=merge_stars
 	chk_prev find_stars
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs; end_step
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	chk_outputs; end_step
 fi
 
 #-----------------------------------------------------------------------------
 ### -  6. substars:  subtract_stars
 #-----------------------------------------------------------------------------
 
-if [ $1 == "substars" ] || [ $auto == "T" ]; then
+if [ $1 == "subtract_stars" ] || [ $1 == "substars" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -450,15 +504,24 @@ if [ $1 == "substars" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
  	module=subtract_stars
 	chk_prev merge_stars
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs; end_step
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	chk_outputs 
+	nbeg=$(grep '## Begin ' $module.out | wc -l)
+	nfin=$(grep '## Finis ' $module.out | wc -l)
+	if [ $nbeg -eq $nfin ]; then
+		ec "# Ran $nfin jobs of $(($naor*4 -  $nzer)) expected"
+	fi
+	end_step
 fi
 
 #-----------------------------------------------------------------------------
 ### -  7. medians:   make_medians
 #-----------------------------------------------------------------------------
 
-if [ $1 == "medians" ] || [ $auto == "T" ]; then
+if [[ $1 =~ "make_medians" ]] || [ $1 == "medians" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -466,19 +529,20 @@ if [ $1 == "medians" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=make_medians
 	chk_prev subtract_stars
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
 	# fix logfile (missing CRs)
 	sed -i 's/s###/s\n###/' $module.out
-
-	end_step
+	chk_outputs; end_step
 fi
 
 #-----------------------------------------------------------------------------
 ### -  8. astrom:    fix_astrometry
 #-----------------------------------------------------------------------------
 
-if [ $1 == "astrom" ] || [ $auto == "T" ]; then
+if [[ $1 =~ "fix_astrometry" ]] || [ $1 == "astrom" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -486,15 +550,18 @@ if [ $1 == "astrom" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=fix_astrometry
 	chk_prev make_medians
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs; end_step
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	chk_outputs; end_step
 fi
 
 #-----------------------------------------------------------------------------
 ### -  9. submeds:   sub_medians
 #-----------------------------------------------------------------------------
 
-if [ $1 == "submeds" ] || [ $auto == "T" ]; then
+if  [[ $1 =~ "subtract_medians" ]] || [ $1 == "submeds" ] ||[ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -502,17 +569,21 @@ if [ $1 == "submeds" ] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=subtract_medians
 	chk_prev fix_astrometry
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs
-
-	# get total number of AORs * chan
-	nc=$(head -1 Products/AORs.tbl | \wc -c); nb=$(($nc-2))
-	Ntot=$(grep IRAC Products/AORs.tbl | cut -c${nb}-${nc} | awk 'BEGIN { s = 0 }; { s = s + $1 }; END { print "" s  }')
-	# get number of processed AORs * chan
-	Nproc=$(grep ^Proces subtract_medians.out | wc -l)
-	if [ $Ntot -ne $Nproc ]; then
-		ec "# Processed $Nproc AOR*Chan out of $Ntot "
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	chk_outputs
+	# check for presence of expected products of subtract_medians 
+	mdir=$(grep ^AORoutput supermopex.py | cut -d\' -f2 | tr -d \/)
+	chkmeds > missing_submeds.list
+	nmiss=$(cat missing_submeds.list | wc -l)
+	if [ $nmiss -ne 0 ]; then
+		ec "PROBLEM: Missing $nmiss products - see missing_submeds.list"
 		askuser
+	else 
+		ec "# Found all expected products ... continue"
+		rm missing_submeds.list
 	fi
 
 	end_step
@@ -530,16 +601,18 @@ if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=check_stars
 	chk_prev subtract_medians
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs
-	end_step
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	chk_outputs; end_step
 fi
 
 #-----------------------------------------------------------------------------
 ### - 11. check_astro:  check_astrometry (optional)
 #-----------------------------------------------------------------------------
 
-if [[ $1 =~ "check_astro" ]] || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
+if [[ $1 =~ "check_astrometry" ]] || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -547,17 +620,18 @@ if [[ $1 =~ "check_astro" ]] || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=check_astrometry
 	chk_prev subtract_medians
+	bdate=$(date "+%s.%N")       # start time/date
 
-
-	write_module; chk_outputs
-	end_step
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	chk_outputs; end_step
 fi
 
 #-----------------------------------------------------------------------------
-### - 12. set_tiles: setup_tiles
+### - 12. setup_tiles: setup_tiles
 #-----------------------------------------------------------------------------
 
-if [[ $1 =~ "set_tiles" ]] || [ $auto == "T" ]; then
+if [[ $1 =~ "setup_tiles" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -565,8 +639,11 @@ if [[ $1 =~ "set_tiles" ]] || [ $auto == "T" ]; then
 	ec "#-----------------------------------------------------------------------------"
 	module=setup_tiles
 	chk_prev subtract_medians
+	bdate=$(date "+%s.%N")       # start time/date
 
-	write_module; chk_outputs
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
+	chk_outputs
 
 	# check TileListFile:
 	tlf=${odir}/${PID}$(grep '^TileListFile ' $pars | cut -d\' -f2) 
@@ -585,16 +662,17 @@ fi
 ### - 13. do_tiles:  make_tiles
 #-----------------------------------------------------------------------------
 
-if [ $1 == "do_tiles" ] || [ $1 == "make_tiles" ] || [ $auto == "T" ]; then
+if [[ $1 =~ "make_tiles" ]] || [ $1 == "do_tiles" ] || [ $auto == "T" ]; then
 
 	module=make_tile
 	chk_prev setup_tiles
+	bdate=$(date "+%s.%N")       # start time/date
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  13. Build the tiles    <<<<"
 	ec "#-----------------------------------------------------------------------------"
 
-	rm -f build.tiles make_tile_*.sh
+	rm -f build.tiles make_tile_*.* make_tiles $odir/${PID}.irac.tile.*mosaic*.fits
 	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
 
 	# Find number of jobs:
@@ -613,26 +691,33 @@ if [ $1 == "do_tiles" ] || [ $1 == "make_tiles" ] || [ $auto == "T" ]; then
 		sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|"  -e "s|@PID@|$PID|" \
 			-e "s|@JOB@|$j|"   $bindir/${module}.sh > $outmodule
 		chmod 755 $outmodule
-		echo "wrote $outmodule" | tee -a $pipelog
 		echo "qsub $outmodule; sleep 1" >> build.tiles
 	done
+	nmod=$(ls ${module}_*.sh | wc -l)
+	nsub=$(cat build.tiles | wc -l)
+	if [ $nsub -eq $njobs ]; then 
+		ec "# wrote $nmod ${module}_nn.sh modules"  # | tee -a $pipelog
+	else
+		ec "# wrote only $nmod modules of #njobs expected"
+		askuser
+	fi
 
 	if [ $dry == "T" ]; then ec "----  EXITING PIPELINE DRY MODE	 ---- "; exit 10; fi
 
-	nsub=$(cat build.tiles | wc -l)
-	ec "# Submit $nsub ${module}_nn files ... " ; source build.tiles | tee -a $pipelog
+	# submit the jobs and begin the wait loop
+	ec "# Submit $nsub ${module}_nn files ... " 
+	source build.tiles | tee submit_tiles.log
+	grep -v master submit_tiles.log   # to look for errors in submission
 
-	# wait loop
-	ec "--  Wait for ${module}_ch? to finish  --"; sleep 20
+	ec "--  Wait for ${module}_nn to finish  --"; sleep 20
 	while :; do 
 		ndone=$(ls ${module}_*.out 2> /dev/null | wc -l)
 		[ $ndone -eq $nsub ] && break
 		sleep 30
 	done
 	chmod 644 ${module}_*.out
-#	for f in ${module}_*.out; do
-#		ec "# Job $f finished - $(grep RESOURCESUSED $f | cut -d\, -f4)"
-#	done
+
+	ec "# Jobs make_tile_nnn finished - walltime: $(wt)"
 
 	ec "# Check results ..."
 	# 1. check torque exit status
@@ -646,50 +731,80 @@ if [ $1 == "do_tiles" ] || [ $1 == "make_tiles" ] || [ $auto == "T" ]; then
 	fi
 	# 2. Check .out files for incomplete processing
 	grep PROBLEM  ${module}_*.out > make_tiles.pbs
-	nbps=$(cat make_tiles.pbs | wc -l)
+	npbs=$(cat make_tiles.pbs | wc -l)
 	nmos=$(ls $odir/$PID.irac.tile.*.mosaic.fits | wc -l)
 	if [ $npbs -ne 0 ]; then
 		ec "PROBLEM: found $npbs jobs that did not build all expected outputs - see make_tiles.pbs"
 		head make_tiles.pbs		
 	fi
-	nprods=$(ls $odir/$PID.irac.tile.*mosaic*.fits | wc -l)
-	if [ $nmos -eq $nsub ]; then
-		ec "# All jobs build all expected outputs ... "
-		ec "# Found $nmos tiles, and $nprods products"
-		rm -f make_tiles.pbs
-	fi
 
 	# 3. check .log files (from mopex) for other errors
-	errfile=$module.err
+	errfile=${module}s.err
 	grep -i -e Error -e Exception -e MALLOC ${module}_*.log > $errfile
 	grep ^System\ Exit  ${module}_*.log | grep -v ' 0' >> $errfile
 	nerr=$(cat $errfile | wc -l)
 	if [ $nerr -gt 0 ]; then
-		ec "PROBLEM: found $nerr errors in .log files ... check file $errfile"
-		head -6 $errfile ; askuser
+		ec "ATTN: found $nerr errors in .log files ... check file $errfile"
+		#head -6 $errfile #; 
+		#askuser
 	else
-		ec "# ==> no other errors found ... continue "; rm -f $errfile 
+		ec "# ==> no other errors found ... mv make_tile_*.* to make_tiles dir "
+		rm -f $errfile 
 	fi
 
-	end_step
+	# 4. check that all products are built
+	nprods=$(ls $odir/$PID.irac.tile.*mosaic*.fits | wc -l)
+	if [ $nmos -eq $nsub ]; then
+		ec "# All jobs build all expected outputs: "
+		ec "# Found all $nmos expected tiles, and all $nprods expected products"
+		rm -f make_tiles.pbs
+	else
+		ec "ATTN: Found only $nmos tiles of $nsub expected ..."
+	fi
 
-	exit 0
+	mkdir make_tiles
+	mv make_tile_*.* build.tiles submit_tiles.log make_tiles.* make_tiles
+	rm addkeyword.txt
+	
+	end_step
 fi
 
 #-----------------------------------------------------------------------------
 ### - 14. mosaic:    combine_tiles
 #-----------------------------------------------------------------------------
 
-if [ $1 == "combTiles" ] || [ $auto == "T" ]; then
+if [ $1 == "combTiles" ] || [[ $1 =~ "combine_tiles" ]] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	#chk_prev make_tile
+	ec "#-----------------------------------------------------------------------------"
+	ec "# >>>>  14. Combine tiles into mosaic (swarp)   <<<<"
+	ec "#-----------------------------------------------------------------------------"
+	module=combine_tiles
+	#chk_prev  ... n/a for this - do by hand
+	bdate=$(date "+%s.%N")       # start time/date
+	nn=$(ls make_tiles/make_tile_*.out | wc -l)
+	if [ $nn -eq 0 ]; then
+		ec "ERROR: No make_tile_nnn.out found ... previous step not complete? "
+		askuser
+	fi
 
-	ec "#-----------------------------------------------------------------------------"
-	ec "# >>>>  14. Combine tiles into mosaic   <<<<"
-	ec "#       !!!!   NOT YET IMPLEMENTED  !!!  "
-	ec "#-----------------------------------------------------------------------------"
+	write_module
+	ec "# Job $module finished - unix walltime=$(wt)"
 	
+	# check products
+	grep Found combine_tiles.out
+	ec "# Built the following stacks: "
+#	grep mosaic_ch combine_tiles.out | grep -v -e swarp -e Output
+	ls -lh  $odir/mosaic_ch*.fits | tee -a $pipelog
+
+	end_step
+	# quit here if long run, else continune with building "old-style" mosaics
+	if [ $NAORs -gt 66 ]; then 
+		echo "# Big job - stop here"
+		exit 0
+	else
+		echo "# Small job (testing) ... continue with old mosaic"
+	fi
 fi
 
 
@@ -699,11 +814,12 @@ fi
 ### - 21. mosaic:    make_mosaics ... old style
 #-----------------------------------------------------------------------------
 
-if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
+if [ $1 == "mosaic" ] || [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	module=prep_mosaic
 	chk_prev subtract_medians
+	bdate=$(date "+%s.%N")       # start time/date
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  10a. prepare for building mosaics - part 0  <<<<"
@@ -714,17 +830,18 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 	if [ ! -e temp/header_list.tbl ]; then
 		ec "# a) prepare tables and files ...."
 		write_module
+		ec "# Job $module finished - unix walltime=$(wt)"
 		chk_outputs	
 	else
-		ec "ATTN: temp/header_list.tbl already available, skip $module"
+		ec "WARNING: temp/header_list.tbl already available, skip $module"
 	fi
 
 	# check if temp dirs already exist:
 	ls -lhd $tdir/?/* 2> /dev/null  > tempdirs ; ndirs=$(cat tempdirs | wc -l)
 	if [ -s tempdirs ]; then 
-		ec "ATTN: temp dirs for mosaic products already exist: "
+		ec "CHECK: temp dirs for mosaic products already exist: "
 		cat tempdirs
-		ec "ATTN: delete them or not, as necessary, before continuing"
+		ec "CHECK: delete them or not, as necessary, before continuing"
 		askuser
 	fi
 	rm -f tempdirs   # ; exit   ##################  stop here for now
@@ -751,35 +868,15 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 
 	chans=$(cut -d\  -f2 $odir/$ltab | grep 0000_0000 | sed 's|automnt/||' | cut -d\/ -f6 | sort -u | cut -c3,4)
 	ecn "# Found channels: "; for c in $chans; do echo -n "$c "; done; echo "" #   ; exit
+
 	# build local qsub scripts
-	# look for unused totally free nodes
-	avail=$(cnodes | grep free | grep -v \# | tr -d \[\] | tr -s ' ' |sort -nk 6 -r | cut -d\  -f2 | head -4)
 	for chan in $chans; do
-		case $chan in
-			1 ) #NODE=$(grep  ^MosaicNODE $pars | cut -d\' -f2)
-				NODE=$(echo $avail| cut -d\  -f1)
-				NPROC=$(($(get_nproc) - 3))
-				ecn "# ==> Chan 1: node=$NODE, ppn=$NPROC;";;
-			2 ) #NODE=$(grep  ^MosaicNODE $pars | cut -d\' -f4)
-				NODE=$(echo $avail| cut -d\  -f2)
-				NPROC=$(($(get_nproc) - 3))
-				ecn "# ==> Chan 2: node=$NODE, ppn=$NPROC;";;
-			3 ) #NODE=$(grep  ^MosaicNODE $pars | cut -d\' -f6)
-				NODE=$(echo $avail| cut -d\  -f3)
-				NPROC=$(($(get_nproc) - 3))
-				ecn "# ==> Chan 3: node=$NODE, ppn=$NPROC;";;
-			4 ) #NODE=$(grep  ^MosaicNODE $pars | cut -d\' -f8)
-				NODE=$(echo $avail| cut -d\  -f4)
-				NPROC=$(($(get_nproc) - 3))
-				ecn "# ==> Chan 4: node=$NODE, ppn=$NPROC;";;
-		esac
 		outmodule=${module}_ch${chan}.sh
 		info="for $WRK, built $(date +%d.%h.%y\ %T)"
-		sed -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  -e "s|@NPROC@|$NPROC|" \
-			-e "s|@PID@|$PID|" -e "s|@INFO@|$info|"  -e "s|@CHAN@|$chan|"   \
+		sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|" -e "s|@PID@|$PID|"  -e "s|@CHAN@|$chan|" \
 			$bindir/${module}.sh > ./$outmodule
 		NF=$(grep in\ Ch${chan} irac.log | tr -s \  | cut -d\  -f7)  # N frames this ch.
-		if [ $NF -gt 40000 ]; then sed -i 's/time=48/time=100/' $outmodule; fi
+		if [ $NF -gt 40000 ]; then sed -i 's/time=48/time=600/' $outmodule; fi
 		chmod 755 $outmodule
 		echo "wrote $outmodule" | tee -a $pipelog
 		echo "qsub $outmodule; sleep 1" >> build.qall
@@ -787,7 +884,7 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 	if [ $dry == "T" ]; then ec "----  EXITING PIPELINE DRY MODE	 ---- "; exit 10; fi
 
 	nsub=$(cat build.qall | wc -l)
-	ec "# Submit $nsub ${module}_ch? files ... "; source build.qall | tee -a $pipelog
+	ec "# Submit $nsub ${module}_ch? files ... "; source build.qall #| tee -a $pipelog
 
 	# wait loop
 	ec "--  Wait for ${module}_ch? to finish  --"; sleep 20
@@ -798,7 +895,7 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 	done
 	chmod 644 ${module}_ch?.out
 	for f in ${module}_ch?.out; do
-		ec "# Job $f finished - $(grep RESOURCESUSED $f | cut -d\, -f4)"
+		ec "# Job $f finished - PBS $(grep RESOURCESUSED $f | cut -d\, -f4)"
 	done
 
 	ec "# Check results ..."
@@ -825,10 +922,13 @@ if [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 	else
 		ec "# ==> no other errors found ... continue "; rm -f $errfile 
 	fi
-	# rename build_mosaic....out so that they won't be clobbered by the next step
-	rename mosaic mosaic_p1 build_mosaic_ch?.out
+
 	end_step
-	if [ $doFull -eq 1 ]; then exit 0; fi
+	if [ $doFull -eq 1 ]; then 
+		exit 0
+	else 	# rename build_mosaic....out so that they won't be clobbered by the next step
+		rename mosaic mosaic_p1 build_mosaic_ch?.out
+	fi
 fi
 
 #-----------------------------------------------------------------------------
@@ -839,6 +939,7 @@ if [ $1 == "finish" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	chk_prev build_mosaic_p1_ch1   # for now
+	bdate=$(date "+%s.%N")       # start time/date
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  11. Build mosaics - part 2   <<<<"
@@ -868,7 +969,7 @@ if [ $1 == "finish" ] || [ $auto == "T" ]; then
 	done
 	chmod 644 ${module}_ch?.out
 	for f in ${module}_ch?.out; do
-		ec "# Job $f finished - $(grep RESOURCESUSED $f | cut -d\, -f4)"
+		ec "# Job $f finished - PBS $(grep RESOURCESUSED $f | cut -d\, -f4)"
 	done
 
 	ec "# Check results ..."
