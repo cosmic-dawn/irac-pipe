@@ -11,10 +11,8 @@ def run_makemedians(JobNo):
     cmd = "cd " + RootDIR + "; " + pythonCMD + " make_medians_function.py " + str(JobNo)
     os.system(cmd)
 
-#Read the log file
-#rawlog = ascii.read(LogFile,format="commented_header",header_start=-1)
+# Read the log file andget just IRAC info
 rawlog = ascii.read(LogTable,format="ipac")
-#get just IRAC info
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 #Get the size of the array
@@ -27,12 +25,12 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log,AORlog)
 Njobs = len(JobList)
 
-print("Making medians with " + str(Nproc) + " threads.")
+print("- Launch making_medians_function with {} threads.".format(Nproc))
 
 pool = mp.Pool(processes=Nproc)
 results = pool.map(run_makemedians, range(0,Njobs))
 
-print("Done!")
+print("- Done!")
 
 #for i in range(0,Nrows):
 #findstar(5,log=log,Nrows=Nrows,BrightStars=BrightStars,AstrometryStars=AstrometryStars)

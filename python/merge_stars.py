@@ -49,7 +49,7 @@ for ch in range(1,5):
         dataMatch = SkyCoord(starData['RA']*u.deg,starData['Dec']*u.deg) #put the catalog into the matching format
         idx,d2d,d3d=dataMatch.match_to_catalog_sky(StarMatch) #do the match
         
-        progress = "Channel " + str(ch) + " of 4, File " + str(i+1) + " of " + str(Nfiles)
+        progress = "Ch " + str(ch) + "; File " + str(i+1) + " of " + str(Nfiles)
         print(progress) #,end="\r")
         
         #Put the fluxes and positions into a holding array

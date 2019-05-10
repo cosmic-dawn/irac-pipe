@@ -1,14 +1,12 @@
 #!/opt/local/bin/python
 
-
-from supermopex import *
-from spitzer_pipeline_functions import *
-
 import numpy as np
-
 from astropy.io import ascii
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+
+from supermopex import *
+from spitzer_pipeline_functions import *
 
 import sys
 from optparse import OptionParser
@@ -26,31 +24,24 @@ if len(args) < 1:
 #read job number
 JobNo=int(args[0])
 
-#read in the log file
-#rawlog = ascii.read(LogFile,format="commented_header",header_start=-1)
+#print("-- Read the log file and get the IRAC info")  ##DEUG
 rawlog = ascii.read(LogTable,format="ipac")
-
-#get just IRAC info
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
-#Get the size of the array
-Nrows = log['Filename'].size
-
-#read in the AOR properties log
-AORlog = ascii.read(AORinfoTable,format="ipac")
-
-#genreate a joblist for parallelization
-JobList = make_joblist(log,AORlog)
+# Joblist is generated in find_stars.py
+#print("-- Read job list written find_stars")  ##DEUG
+JobListName = OutputDIR + PIDname + '.jobs_subtract_stars.tbl'
+JobList = ascii.read(JobListName, format="ipac")
 Njobs = len(JobList)
 
 if (JobNo > Njobs):
     die("Requested job number greater than number of jobs available " + str(Njobs) + "!");
 
-#Read the refined fluxes and postions
-StarData = ascii.read(RefinedStarCat,format="ipac") #read the data
-StarMatch = SkyCoord(StarData['ra']*u.deg,StarData['dec']*u.deg)
+# Read the refined fluxes and postions
+StarData = ascii.read(RefinedStarCat, format="ipac") #read the data
+StarMatch = SkyCoord(StarData['ra']*u.deg, StarData['dec']*u.deg)
 
 
-print("Starting star subtraction and correction with " + str(Nproc) + " threads.")
+#print("-- Starting star subtraction/correction for {} jobs using {} threads.".format(Njobs, Nproc))  ##DEBUG
 
-subtract_stars(JobNo,JobList=JobList,log=log,StarData=StarData,StarMatch=StarMatch)
+subtract_stars(JobNo, JobList=JobList, log=log, StarData=StarData, StarMatch=StarMatch)

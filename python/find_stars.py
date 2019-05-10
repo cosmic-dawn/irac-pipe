@@ -4,36 +4,41 @@ import numpy as np
 from astropy.io import ascii
 from supermopex import *
 from spitzer_pipeline_functions import *
-import os
+import sys,os
 import multiprocessing as mp
 
 def run_findstars(JobNo):
     cmd = "cd " + RootDIR + "; " + pythonCMD + " find_stars_function.py " + str(JobNo)
+    print(cmd)
     os.system(cmd)
 
-#Read the log file
-#rawlog = ascii.read(LogFile,format="commented_header",header_start=-1)
+#------------------------------------------------------------------
+# Read the log file and extract the IRAC info
 rawlog = ascii.read(LogTable,format="ipac")
-#get just IRAC info
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
-#Get the size of the array
-Nrows = log['Filename'].size
-
-#read in the AOR properties log
+# Read in the AOR properties log, generate a joblist and write it to file
 AORlog = ascii.read(AORinfoTable,format="ipac")
-
-#genreate a joblist for parallelization
-JobList = make_joblist(log,AORlog)
+JobList = make_joblist(log, AORlog)
+JobListName = OutputDIR + PIDname + '.jobs_find_stars.tbl'
 Njobs = len(JobList)
+ascii.write(JobList, JobListName, format="ipac",overwrite=True)    
+print("Built job list {} with {} jobs".format(JobListName, Njobs))
 
-print("Fitting stars with " + str(Nproc) + " threads.")
+# Read in Stars from WISE and cut on brigt stars, then write out a table to use for fitting.
+stars = ascii.read(StarTable,format="ipac")
+BrightFlux = 10**((BrightStar-23.9)/-2.5)  #convert from mag to uJy
+BrightStars = stars[:][((stars['w1'] > BrightFlux) + (stars['w2'] > BrightFlux)).nonzero()] #get only bright stars
+ascii.write(BrightStars, BrightStarCat, format="ipac", overwrite=True)
+
+print("- Launch find_stars_function with {} threads".format(Nproc))
 
 pool = mp.Pool(processes=Nproc)
 results = pool.map(run_findstars, range(0,Njobs))
 
-print("Done!")
+print("- Done!")
 
+#Nrows = log['Filename'].size
 #for i in range(0,Nrows):
 #findstar(5,log=log,Nrows=Nrows,BrightStars=BrightStars,AstrometryStars=AstrometryStars)
 #        print str(i+1) + ' of ' + str(Nrows)

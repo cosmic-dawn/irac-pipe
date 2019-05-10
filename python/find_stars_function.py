@@ -22,32 +22,25 @@ if len(args) < 1:
 #read job number
 JobNo=int(args[0])
 
-#Read the log file
-#rawlog = ascii.read(LogFile,format="commented_header",header_start=-1)
+#print("-- Read the log file and get the IRAC info")   ##DEUG
 rawlog = ascii.read(LogTable,format="ipac")
-#get just IRAC info
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
-#Get the size of the array
-Nrows = log['Filename'].size
-
-#read in the AOR properties log
-AORlog = ascii.read(AORinfoTable,format="ipac")
-
-#genreate a joblist for parallelization
-JobList = make_joblist(log,AORlog)
+# Joblist is generated in find_stars.py
+#print("-- Read job list written find_stars")  ##DEUG
+JobListName = OutputDIR + PIDname + '.jobs_find_stars.tbl'
+JobList = ascii.read(JobListName, format="ipac")
 Njobs = len(JobList)
 
 if (JobNo > Njobs):
     die("Requested job number greater than number of jobs available " + str(Njobs) + "!");
 
-#Read in Stars from WISE and cut on brigt stars, then write out a table to use for fitting.
-stars = ascii.read(StarTable,format="ipac")
-BrightFlux = 10**((BrightStar-23.9)/-2.5)#convert from mag to uJy
-BrightStars = stars[:][((stars['w1'] > BrightFlux) + (stars['w2'] > BrightFlux)).nonzero()] #get only bright stars
-ascii.write(BrightStars,BrightStarCat,format="ipac",overwrite=True)
+# AMo: moved the writing of this bright star catal to find_stars.py; here just read the table
+#print("-- Read bright star table")   ##DEBUG
+BrightStars = ascii.read(BrightStarCat, format="ipac")
 
-#Read in the table of Gaia stars for astrometry correction
+# Read in the table of Gaia stars for astrometry correction
 AstrometryStars = ascii.read(GaiaTable,format="ipac") #read the data
 
-findstar(JobNo,JobList,log=log,BrightStars=BrightStars,AstrometryStars=AstrometryStars)
+#print("-- Launch findstar(JobNo, JobList, etc)".format(JobNo))  ##DEBUG
+findstar(JobNo, JobList, log=log, BrightStars=BrightStars, AstrometryStars=AstrometryStars)

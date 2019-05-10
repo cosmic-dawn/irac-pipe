@@ -70,8 +70,44 @@ echo ">> ==========   End python output   ========== "
 echo ""
 
 echo ""
+echo ">> Check all products produced:"
+
+dir=$(grep ^AORoutput supermopex.py | cut -d\' -f2 | tr -d \/)
+chkmeds() {            # loop over tables in medians/ directory
+	for f in $dir/files.*.tbl; do
+		for i in $(grep _bcd.fits $f | cut -d' ' -f2); do
+			if [ ! -e ${i%_bcd.fits}_sub.fits ]; then 
+				str=$(echo ${i%_bcd.fits}_sub.fits | cut -d\/ -f5-8)
+				echo "  ATTN: ${str} NOT FOUND"
+			fi
+		done
+	done
+}
+
+chkmeds > missing_submeds.list
+nmiss=$(cat missing_submeds.list | wc -l)
+if [ $nmiss -gt 0 ]; then
+	echo "PROBLEM:  $nmiss _sub.fits files not build - see missing_submeds.list"
+	exit=1
+else
+	exit=0
+fi
+
 echo "------------------------------------------------------------------"
 echo " >>>>  $module finished on $(date) - walltime: $(wt)  <<<<"
 echo "------------------------------------------------------------------"
 echo ""
-exit 0
+exit $exit
+
+# for each _bcd.fits frame there shoud be a _sub.fits and an _sbunc.fits
+data=$(grep ^RawDataDir supermopex.py | cut -d\' -f2 | tr -d \/)
+
+# loop over files
+for d in $data/r*; do       # split loop to avoid lists too long for OS
+	for f in ch?/bcd/SPI*_bcd.fits; do 
+		root=${f%_bcd.fits}
+		if [ ! -e ${root}_sub.fits ]; then 
+			echo "  ATTN: $d/${root}_sub.fits NOT FOUND"
+		fi
+	done
+done

@@ -23,10 +23,8 @@ if len(args) < 1:
 #read job number
 JobNo=int(args[0])
 
-#read in the log file
-#log = ascii.read(LogFile,format="commented_header",header_start=-1)
+# Read in the log file and extract the IRAC info
 rawlog = ascii.read(LogTable,format="ipac")
-#get just IRAC info
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 #Get the size of the array
