@@ -3,7 +3,7 @@
 #PBS -N chkstrs_@PID@
 #PBS -o check_stars.out
 #PBS -j oe
-#PBS -l nodes=@NODE@:ppn=@NPROC@,walltime=48:00:00
+#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=48:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     check_stars.sh @INFO@

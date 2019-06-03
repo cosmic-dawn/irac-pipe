@@ -80,7 +80,7 @@ tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) #; echo "$PID, $tlf"; exit
 tlf=${odir}/${PID}$tlf                            #; echo "$PID, $tlf"
 
 nline=$(($jobNo+5))
-tlf${odir}/${PID}.mosaic_tile_list.tbl
+tlf=${odir}/${PID}.mosaic_tile_list.tbl
 outf=$(sed "${nline}q;d" $tlf | awk '{printf "for tile %s, chan %s",$2,$3}')
 
 echo " - Work dir is:      $WRK"

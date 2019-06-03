@@ -3,7 +3,7 @@
 #PBS -N CombTiles_@PID@
 #PBS -o combine_tiles.out
 #PBS -j oe
-#PBS -l nodes=@NODE@:ppn=18,walltime=12:00:00
+#PBS -l nodes=1:ppn=18,walltime=12:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     comb_tiles.sh @INFO@
@@ -102,7 +102,7 @@ for c in $chans; do
 		#cp $glhead ${mos%.fits}.head   # build link to global head file
 	fi
 
-	comm="swarp @$list -IMAGEOUT_NAME $mos -WEIGHTOUT_NAME $wgt  $args $resy"
+	comm="swarp @$list -IMAGEOUT_NAME $mos  -WEIGHTOUT_NAME $wgt  -RESCALE_WEIGHTS N  $args $resy"
 	echo $comm
 	if [ $dry -eq 1 ]; then
 		echo "# dry mode: do nothing ..."

@@ -3,7 +3,7 @@
 #PBS -N preTiles_@PID@
 #PBS -o setup_tiles.out
 #PBS -j oe
-#PBS -l nodes=@NODE@:ppn=@NPROC@,walltime=24:00:00
+#PBS -l nodes=node48cores:ppn=@NPROC@,walltime=24:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     merge_stars.sh @INFO@
