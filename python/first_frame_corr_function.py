@@ -24,7 +24,7 @@ def first_frame_correct(JobNo):
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
     
-    print('Running First Frame Corrector Job ' + str(JobNo) + ' of ' + str(Njobs) + ' AOR ' + str(AOR) + ' Channel ' + str(Ch)) #,end="\r")
+    print('First Frame Correction: job {:4d} of {}, AOR {} Ch {}'.format(JobNo, Njobs, AOR, Ch)) #,end="\r")
     
     for fileNo in range(0,Nframes):
     

@@ -20,7 +20,7 @@ log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 # Read in the AOR properties log, generate a joblist and write it to file
 AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log, AORlog)
-JobListName = OutputDIR + PIDname + '.jobs_find_stars.tbl'
+JobListName = OutputDIR + PIDname + '.find_stars.jobs'
 Njobs = len(JobList)
 ascii.write(JobList, JobListName, format="ipac",overwrite=True)    
 print("Built job list {} with {} jobs".format(JobListName, Njobs))
@@ -30,6 +30,7 @@ stars = ascii.read(StarTable,format="ipac")
 BrightFlux = 10**((BrightStar-23.9)/-2.5)  #convert from mag to uJy
 BrightStars = stars[:][((stars['w1'] > BrightFlux) + (stars['w2'] > BrightFlux)).nonzero()] #get only bright stars
 ascii.write(BrightStars, BrightStarCat, format="ipac", overwrite=True)
+print("Built list {} of bright stars from WISE catal.".format(BrightStarCat.split('/')[-1]))
 
 print("- Launch find_stars_function with {} threads".format(Nproc))
 

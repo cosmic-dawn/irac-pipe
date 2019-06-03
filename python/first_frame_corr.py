@@ -11,10 +11,8 @@ def run_firstframe(JobNo):
     cmd = "cd " + RootDIR + "; " + pythonCMD + " first_frame_corr_function.py " + str(JobNo)
     os.system(cmd)
 
-#Read the log file
-#rawlog = ascii.read(LogFile,format="commented_header",header_start=-1)
+#Read the log file and get just IRAC info
 rawlog = ascii.read(LogTable,format="ipac")
-#get just IRAC info
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 #Get the size of the array

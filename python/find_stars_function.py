@@ -28,7 +28,7 @@ log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 # Joblist is generated in find_stars.py
 #print("-- Read job list written find_stars")  ##DEUG
-JobListName = OutputDIR + PIDname + '.jobs_find_stars.tbl'
+JobListName = OutputDIR + PIDname + '._find_stars.jobs'
 JobList = ascii.read(JobListName, format="ipac")
 Njobs = len(JobList)
 

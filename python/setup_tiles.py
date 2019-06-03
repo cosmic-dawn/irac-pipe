@@ -65,7 +65,10 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
             for x in range(0,Nx):
                 xc = (x+0.5)*MosaicTileSize-MosaicEdge-CRPIX1
                 yc = (y+0.5)*MosaicTileSize-MosaicEdge-CRPIX2
-                
+                # new CRPIX values must not be interger values
+                if (xc % 1 == 0.0): xc += 0.5
+                if (yc % 1 == 0.0): yc += 0.5
+
                 tileFIFfilename = OutputDIR + PIDname + ".irac.tile." + str(tileID+1) + ".FIF.tbl"
                 FIFlist.append(tileFIFfilename)
                 tileFIFfile = open(tileFIFfilename,"w")
@@ -96,7 +99,7 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
                         
                 tileFIFfile.close()  # write it out
                 tileID+=1
-        
+
         print("Wrote FIF files for {} tiles".format(tileID))
         print("Now build job list")
     

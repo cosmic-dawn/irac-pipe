@@ -41,7 +41,7 @@ pythonCMD  = "python"                      # python command
 #---------------------- END PARAMETERS ----------------------
 
 # Mosaic tile size in input pixels for parallelizing mosaic making
-MosaicTileSize = 512
+MosaicTileSize = 1024     # 512
 MosaicEdge     = 12       # number of pixels to add to edge of overall mosaic
 TileListFile   = OutputDIR + PIDname + '.mosaic_tile_list.tbl'
 

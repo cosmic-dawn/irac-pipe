@@ -1118,6 +1118,7 @@ def make_tile(JobNo,JobList):
     logfile = 'make_tile_'+str(JobNo)+'.log'
     print(">> logfile is {}".format(logfile))
     cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
+#    cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR
     print(">> command line is:")
     print("   "+cmd)
     os.system(cmd)
