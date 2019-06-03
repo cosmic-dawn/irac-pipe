@@ -30,13 +30,14 @@
 # v2.11: add check_stars and check_astrom; other details           (26.mar.19)
 # v2.12: add use_rel var to select devel or release scripts; etc.  (29.mar.19)
 # v2.13: minor reorganisation of code; minor other changes         (13.apr.19)
-# v2.14: improve handling of large number of jobs in make_tiles    (16.apr.18)
-# v2.15: fix logfiles, checks on products, improve logging         (26.apr.16) 
+# v2.14: improve handling of large number of jobs in make_tiles    (16.apr.19)
+# v2.15: fix logfiles, checks on products, improve logging         (26.apr.19)
+# v2.16: more checks on products, improve logging of modules       (10.may.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.15 (26.apr.19)"
+vers="2.16 (10.may.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -56,7 +57,7 @@ fi
 #-----------------------------------------------------------------------------
 
 module () {	 eval $(/usr/bin/modulecmd bash $*); }
-module purge ; module load intelpython/3   mopex 
+module purge ; module load intelpython/3-2019.4   mopex 
 
 #-----------------------------------------------------------------------------
 # setup dry and auto-continue modes
@@ -189,7 +190,7 @@ chk_outputs() {	 # check outputs of module
 	ec "# ==> torque exit status ok;"; rm -f estats.txt
 	# 2. check .out file for other errors (python)
 	errfile=$module.err
-	grep -i -e Error -e Exception -e Traceback -e MALLOC -e Errno $module.out > $errfile
+	grep -i -n -e Error -e Exception -e Traceback -e MALLOC -e Errno $module.out > $errfile
 	nerr=$(cat $errfile | wc -l)
 	if [ $nerr -gt 0 ]; then
 		ec "PROBLEM: found $nerr errors in .out files ... check file $errfile"
@@ -384,7 +385,7 @@ fi
 ### -  2. catals:    get_catalogs
 #-----------------------------------------------------------------------------
 
-if [ $1 == "catals" ] || [ $auto == "T" ]; then
+if [ $1 == "catals" ] || [ $1 == "get_catals" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	ec "#-----------------------------------------------------------------------------"
@@ -397,7 +398,8 @@ if [ $1 == "catals" ] || [ $auto == "T" ]; then
 	if [ $(hostname) == "candid01.iap.fr" ]; then
 		echo "# Running ${module}.py on login node" > ${module}.out
 		echo "" >> ${module}.out
-		python ${module}.py >> ${module}.out 2>&1
+		if [ $dry == 'T' ]; then ec "----  EXITING PIPELINE DRY MODE     ---- "; exit 10; fi
+		python ${module}.py | tee -a ${module}.out
 		ec "# Job $module finished - unix walltime=$(wt)"
 	else
 		ec "PROBLEM: can't run on $(hostname) to get external catals ... quitting"
@@ -405,15 +407,15 @@ if [ $1 == "catals" ] || [ $auto == "T" ]; then
 	fi
 	
 	errfile=$module.err
-	grep -i -e Error -e Exception $module.out > $errfile
+	grep -v WARNING $module.out | grep -i -n -e Error -e Exception > $errfile
 	nerr=$(cat $errfile | wc -l)
 	if [ $nerr -gt 0 ]; then
 		ec "PROBLEM: found $nerr errors in .out files ... check file $errfile"
 		head -6 $errfile ; askuser
 	fi
 	ec "# ==> no errors found ... continue "; rm -f $errfile 
-	grep range $module.out | \
-		awk '{printf "[INFO]  %3s in range %6.2f -- %6.2f\n", $1,$4,$6}' | tee -a $pipelog
+	grep -e range -e Area $module.out | awk '{print "[INFO]  "$0}' | tee -a $pipelog
+	grep -e Already -e Downloaded $module.out | awk '{print "[INFO]  "$0}' | tee -a $pipelog
 
 	end_step
 fi
@@ -443,6 +445,16 @@ fi
 #-----------------------------------------------------------------------------
 ### -  4. find:      find_stars
 #-----------------------------------------------------------------------------
+'''
+On how to split this into several jobs to run on different nodes:
+1. with the first part of find_stars.sh, build job list and bright stars table
+2. in shell, split this list into N sublists; selecting a suitable value of N
+3. for each sublist, 
+3a. pipeline builds new findStars.sh from template
+3b. new findStars.py reads sublist and bright stars table, then using "mp.Pool"
+    launches the jobs
+Thus find_stars_function and spitzer_pipeline_functions remain the same
+'''
 
 if [ $1 == "find_stars" ] || [ $1 == "find" ] || [ $auto == "T" ]; then
 
@@ -740,7 +752,7 @@ if [[ $1 =~ "make_tiles" ]] || [ $1 == "do_tiles" ] || [ $auto == "T" ]; then
 
 	# 3. check .log files (from mopex) for other errors
 	errfile=${module}s.err
-	grep -i -e Error -e Exception -e MALLOC ${module}_*.log > $errfile
+	grep -i -n -e Error -e Exception -e MALLOC ${module}_*.log > $errfile
 	grep ^System\ Exit  ${module}_*.log | grep -v ' 0' >> $errfile
 	nerr=$(cat $errfile | wc -l)
 	if [ $nerr -gt 0 ]; then
@@ -911,7 +923,7 @@ if [ $1 == "mosaic" ] || [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 
 	# 2. check .out file for other errors (python)
 	errfile=$module.err
-	grep -i -e Error -e Exception -e MALLOC ${module}_ch?.out > $errfile
+	grep -i -n -e Error -e Exception -e MALLOC ${module}_ch?.out > $errfile
 	grep -n exit ${module}_ch?.out | grep -v ' 0' >> $errfile
 	nerr=$(cat $errfile | wc -l)
 	# There are $nsub FileNotFoundError from the copy files at the end that is
@@ -985,7 +997,7 @@ if [ $1 == "finish" ] || [ $auto == "T" ]; then
 
 	# 2. check .out file for other errors (python)
 	errfile=$module.err
-	grep -i -e Error -e Exception -e Traceback -e MALLOC ${module}_ch?.out > $errfile
+	grep -i -n -e Error -e Exception -e Traceback -e MALLOC ${module}_ch?.out > $errfile
 	grep -n exit ${module}_ch?.out | grep -v ' 0' >> $errfile
 	nerr=$(cat $errfile | wc -l)
 	if [ $nerr -gt 0 ]; then

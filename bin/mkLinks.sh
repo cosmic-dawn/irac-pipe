@@ -18,11 +18,14 @@
 #RAW=/n08data/Spitzer/COSMOS   # ==> /n09data/COSM
 #RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmctr    central part of COSMOS field
 #RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmos155   r155* AORs (45) of COSMOS field
+RAW=/n09data/Spitzer/COSMOS_New     # ==> /n09data/COSnew      75 AORs
 
 loc=$(pwd | cut -d\/ -f3)   # nominally name of Spitzer field 
 
 if [ $loc == 'mini' ]; then loc=COSMOS; fi  
-RAW=/n08data/Spitzer/$loc    
+if [ $loc == 'COSnew' ]; then RAW=/n09data/Spitzer/COSMOS_New; fi 
+#RAW=/n08data/Spitzer/$loc    
+
 echo "Raw data linked from $RAW"  #; exit
 
 if [ ! -d AllData ]; then mkdir AllData Data cal; fi
