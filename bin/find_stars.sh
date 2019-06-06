@@ -3,11 +3,11 @@
 #PBS -N find_@PID@
 #PBS -o find_stars.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=45,walltime=100:00:00
+#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     find_stars.sh @INFO@
-# Purpose:  wrapper for fins_stars.py
+# Purpose:  wrapper for find_stars.py
 #-----------------------------------------------------------------------------
 set -u  
 

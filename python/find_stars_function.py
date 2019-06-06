@@ -1,12 +1,12 @@
 #!/opt/local/bin/python
 
+import sys
 import numpy as np
 from astropy.io import ascii
 
 from supermopex import *
 from spitzer_pipeline_functions import *
 
-import sys
 from optparse import OptionParser
 
 #parse the arguments
@@ -28,7 +28,7 @@ log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 # Joblist is generated in find_stars.py
 #print("-- Read job list written find_stars")  ##DEUG
-JobListName = OutputDIR + PIDname + '._find_stars.jobs'
+JobListName = OutputDIR + 'jobs.find_stars'
 JobList = ascii.read(JobListName, format="ipac")
 Njobs = len(JobList)
 
