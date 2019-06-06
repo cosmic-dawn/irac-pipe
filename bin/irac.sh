@@ -624,8 +624,10 @@ if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 	ec "# >>>>  10. Check stars   <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=check_stars
-	chk_prev subtract_medians
 	bdate=$(date "+%s.%N")       # start time/date
+	# estimate 0.3 min/frame; about 1/3 that of find_stars
+	wtime=$((1+$Nframes/$Nproc/60/3)):00:00
+	chk_prev subtract_medians
 
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
