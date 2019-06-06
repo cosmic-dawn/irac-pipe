@@ -25,6 +25,7 @@
 # v1.41: minor fixes (mostly to scripts)
 # v1.42: minor fixes (mostly to scripts)
 # v1.50: split build_mosaic in two parts                           (17.Jan.19)
+#-----------------------------------------------------------------------------
 # v2.00: using new scripts from Peter Capak, ex. make_mosaics      (27.Feb.19)
 # v2.10: with parallelised version of make_mosaics                 (13.Mar.19)
 # v2.11: add check_stars and check_astrom; other details           (26.mar.19)
@@ -33,11 +34,12 @@
 # v2.14: improve handling of large number of jobs in make_tiles    (16.apr.19)
 # v2.15: fix logfiles, checks on products, improve logging         (26.apr.19)
 # v2.16: more checks on products, improve logging of modules       (10.may.19)
+# v2.17: improved Irsa queries; find_stars walltime fn(Nframes)    (07.jun.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.16 (10.may.19)"
+vers="2.17 (07.june.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -115,6 +117,7 @@ else
 	if [ $dry == "F" ]; then exit 1; fi 
 fi
 
+wtime="12:00:00"   # default value
 #-----------------------------------------------------------------------------
 # Functions
 #-----------------------------------------------------------------------------
@@ -147,7 +150,9 @@ askuser() {  # ask user if ok to continue
 	done  
 }
 
-chk_prev() {  # check given step is done (presence of .out file)
+chk_prev() {  
+    # check given step is done (presence of .out file), 
+	# and copy python scripts for current module
 	if [[ $1 != "NULL" ]]; then 
 		if [ ! -e $1.out ] || [[ $1 == "NULL" ]]; then 
 			ec "ERROR: $1.out not found ... previous step not complete? "
@@ -155,7 +160,7 @@ chk_prev() {  # check given step is done (presence of .out file)
 		fi
 	fi
 	# copy python scripts to work dir
-	xdone=T
+	xdone=T   # partly done ... (do not print list of steps)
 	comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
 	fn=$pydir/${module%.py}_function.py
 	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
@@ -165,7 +170,7 @@ write_module() {  # write local verions of py and sh modules
 	info="for $WRK, built $(date +%d.%h.%y\ %T)"
 	sed -e "s|@NPROC@|$Nproc|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
 		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|" -e "s|USE_REL|$use_rel|" \
-		$bindir/$module.sh > ./$module.sh
+		-e "s|@WTIME@|$wtime|"   $bindir/$module.sh > ./$module.sh
 	chmod 755 $module.sh
 	ec "# Wrote $module.sh"
 	if [ $dry == "T" ]; then ec "----  EXITING DRY MODE	 ---- "; exit 10; fi
@@ -243,7 +248,7 @@ fi
 
 ec "#==================================================#"
 ec "#                                                  #"
-ec "#    This is irac.sh ver $vers          #"
+ec "#    This is irac.sh ver $vers         #"
 ec "#                                                  #"
 ec "#==================================================#"
 ec "|-------  Check parameters  ---------------------------"
@@ -379,6 +384,8 @@ if [ $1 == "setup" ]; then
 	ec "# Number of AOR x valid channels:  $(($naor*4 -  $nzer))"
 
 	end_step
+else
+	Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
 fi
 
 #-----------------------------------------------------------------------------
@@ -399,7 +406,7 @@ if [ $1 == "catals" ] || [ $1 == "get_catals" ] || [ $auto == "T" ]; then
 		echo "# Running ${module}.py on login node" > ${module}.out
 		echo "" >> ${module}.out
 		if [ $dry == 'T' ]; then ec "----  EXITING PIPELINE DRY MODE     ---- "; exit 10; fi
-		python ${module}.py | tee -a ${module}.out
+		python ${module}.py > ${module}.out
 		ec "# Job $module finished - unix walltime=$(wt)"
 	else
 		ec "PROBLEM: can't run on $(hostname) to get external catals ... quitting"
@@ -445,16 +452,16 @@ fi
 #-----------------------------------------------------------------------------
 ### -  4. find:      find_stars
 #-----------------------------------------------------------------------------
-'''
-On how to split this into several jobs to run on different nodes:
-1. with the first part of find_stars.sh, build job list and bright stars table
-2. in shell, split this list into N sublists; selecting a suitable value of N
-3. for each sublist, 
-3a. pipeline builds new findStars.sh from template
-3b. new findStars.py reads sublist and bright stars table, then using "mp.Pool"
-    launches the jobs
-Thus find_stars_function and spitzer_pipeline_functions remain the same
-'''
+
+## On how to split this into several jobs to run on different nodes:
+## 1. with the first part of find_stars.sh, build job list and bright stars table
+## 2. in shell, split this list into N sublists; selecting a suitable value of N
+## 3. for each sublist, 
+## 3a. pipeline builds new findStars.sh from template
+## 3b. new findStars.py reads sublist and bright stars table, then using "mp.Pool"
+##     launches the jobs
+## Thus find_stars_function and spitzer_pipeline_functions remain the same
+
 
 if [ $1 == "find_stars" ] || [ $1 == "find" ] || [ $auto == "T" ]; then
 
@@ -463,13 +470,16 @@ if [ $1 == "find_stars" ] || [ $1 == "find" ] || [ $auto == "T" ]; then
 	ec "# >>>>  4. Find stars  <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=find_stars
-	chk_prev first_frame_corr
 	bdate=$(date "+%s.%N")       # start time/date
+	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
+	wtime=$((1+$Nframes/$Nproc/60)):00:00
+	#echo "$Nframes $Nproc ==> $wtime"  ; exit
 
+	chk_prev first_frame_corr
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
 	# fix logfile (missing CRs)
-	strings $module.out | sed -e 's/fitsFind/fits\nFind/' -e 's/fitsBeg/fits\nBeg/' > xx; mv xx $module.out
+	strings $module.out | sed -e 's/s:\#\#/s:\n\#\#/' > xx; mv xx $module.out
 
 	chk_outputs
 	# any aborted jobs??
@@ -561,8 +571,10 @@ if [[ $1 =~ "fix_astrometry" ]] || [ $1 == "astrom" ] || [ $auto == "T" ]; then
 	ec "# >>>>  8. Fix astrometry   <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=fix_astrometry
-	chk_prev make_medians
 	bdate=$(date "+%s.%N")       # start time/date
+	# estimate 0.3 min/frame; about 1/3 that of find_stars
+	wtime=$((1+$Nframes/$Nproc/60/3)):00:00
+	chk_prev make_medians
 
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
@@ -1038,7 +1050,6 @@ fi
 ### -  - env:       list some processing and environment parameters
 #-----------------------------------------------------------------------------
 
-#if [ $1 != "qwerty" ] ; then
 if [ $xdone == "F" ] ; then
 	echo "#-----------------------------------------------------------------------------"
 	echo "# ERROR: Invalid option $1; valid options are: "
