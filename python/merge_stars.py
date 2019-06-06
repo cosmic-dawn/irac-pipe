@@ -9,17 +9,14 @@ from astropy import units as u
 from astropy.table import Table, Column, MaskedColumn
 from supermopex import *
 
-#read the logfile
-#rawlog = ascii.read(LogFile,format="commented_header",header_start=-1)
+#read the logfile and get IRAC info
 rawlog = ascii.read(LogTable,format="ipac")
-#get just IRAC info
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 #Get the size of the array
 Nrows = log['Filename'].size
 
-#read the stars and convert to the correct format
-#stars = ascii.read(WiseStarCat,format="commented_header",header_start=-1)
+#read the stars table and convert to the correct format
 stars = ascii.read(StarTable,format="ipac") #read the data
 
 StarMatch = SkyCoord(stars['ra'],stars['dec'])

@@ -10,11 +10,8 @@ from functools import partial
 import multiprocessing as mp
 
 
-#read in the log file
-#rawlog = ascii.read(LogFile,format="commented_header",header_start=-1)
+#read in the log file and get IRAC info
 rawlog = ascii.read(LogTable,format="ipac")
-
-#get just IRAC info
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 #get the list of AORs

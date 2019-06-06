@@ -140,7 +140,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     DECs   = log['DEC'][LogIDX]
     
     Nframes = len(files)    
-    print('## Begin job {:4d}: AOR {:8d} / Ch {}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
+    print('## Begin job    {:4d}: AOR {:8d} / ch {}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
     
     for fileNo in range(0,Nframes):
         MJD      = MJDs[fileNo]
@@ -200,8 +200,8 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         BrightStarTable = inputCat
         ascii.write(Table(rows=BrightInFrame,names=['ra','dec']),BrightStarTable,format="ipac",overwrite=True)
         
-        print(' - Frame {:3d}; {:}:'.format(fileNo +1, inputData.split('/')[-1]), end=' ')
-        print(' find bright stars ...', end=' ')
+#        print(' - Frame {:3d}; {:}:'.format(fileNo +1, inputData.split('/')[-1]), end=' ')
+#        print(' find bright stars ...', end=' ')
         
         #do the bright stars for star subtraciton
         command = "apex_user_list_1frame.pl -n findstar.nl -p " + PRF[cryo][Ch-1] + " -u " + BrightStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
@@ -222,7 +222,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         FitStarTable = inputCatAstro
         ascii.write(Table(rows=AstroInFrame,names=['ra','dec']),FitStarTable,format="ipac",overwrite=True)
 
-        print('astrometry stars')
+#        print('astrometry stars')
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -235,7 +235,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
         
-    print('## Finished job {:4d}'.format(JobNo))
+    print('## Finished job {:4d}: AOR {:8d} / ch {}'.format(JobNo, AOR, Ch))
 
 
 #routine to find stars in order to check the astrometry solution
@@ -423,7 +423,7 @@ def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     #count the number of stars left
     GoodStars=ma.count(dRA)
     
-    print('Processing Exposure {:6d} of {:6d} using {:5d} stars.  Offset is dRA = {:10.6f} +/- {:8.6f}; dDEC = {:10.6f} +/- {:8.6f}'.format(JobNo+1, Nrows, GoodStars, corrRA*3600, 3600*sig_RA/np.sqrt(GoodStars), corrDEC*3600, 3600*sig_DEC/np.sqrt(GoodStars) ))
+    print('Process frame {:5d} using {:3d} stars.  Offset is dRA = {:4.2f} +/- {:4.2f}; dDEC = {:5.2f} +/- {:4.2f}'.format(JobNo+1, GoodStars, corrRA*3600, 3600*sig_RA/np.sqrt(GoodStars), corrDEC*3600, 3600*sig_DEC/np.sqrt(GoodStars) ))
     
     astrofix = np.array([JobNo,corrRA,corrDEC,sig_RA/np.sqrt(GoodStars),sig_DEC/np.sqrt(GoodStars),GoodStars],dtype=np.double)
     return(astrofix)
@@ -540,9 +540,8 @@ def check_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     #count the number of stars left
     GoodStars=ma.count(dRA)
     
-#    print('Processing Exposure ' + str(JobNo+1) + ' of ' + str(Nrows) + ' using ' + str(GoodStars) + ' stars.  Offset is dRA = ' + str(corrRA*3600) + ' +/- ' + str(3600*sig_RA/np.sqrt(GoodStars)) + ' dDEC = ' + str(corrDEC*3600) + ' +/- ' + str(3600*sig_DEC/np.sqrt(GoodStars))) #,end="\r")
-    print('Processing Exposure {:6d} of {:6d} using {:5d} stars.  Offset is dRA = {:10.6f} +/- {:8.6f}; dDEC = {:10.6f} +/- {:8.6f}'.format(JobNo+1, Nrows, GoodStars, corrRA*3600, 3600*sig_RA/np.sqrt(GoodStars), corrDEC*3600, 3600*sig_DEC/np.sqrt(GoodStars) ))
-    
+    print('Process frame {:5d} using {:3d} stars.  Offset is dRA = {:4.2f} +/- {:4.2f}; dDEC = {:5.2f} +/- {:4.2f}'.format(JobNo+1, GoodStars, corrRA*3600, 3600*sig_RA/np.sqrt(GoodStars), corrDEC*3600, 3600*sig_DEC/np.sqrt(GoodStars) ))
+
     astrofix = np.array([JobNo,corrRA,corrDEC,sig_RA/np.sqrt(GoodStars),sig_DEC/np.sqrt(GoodStars),GoodStars],dtype=np.double)
     return(astrofix)
 
@@ -561,7 +560,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
     
     Nframes = len(files)
     
-    print('## Begin job {:4d}: AOR {:} / Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
+    print('## Begin job    {:4d}: AOR {:8d} / ch {}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
 
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -705,7 +704,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
             shutil.move(residualImage,SubtractedFile)
             shutil.copy(MaskFile,SubtractedMask)
 
-        print(' - Wrote corrected frame {:3d}: {}'.format(fileNo +1, SubtractedFile.split('/')[-1]))
+        print(' - Wrote star_subtracted frame {:3d}: {}'.format(fileNo +1, SubtractedFile.split('/')[-1]))
 
         # clean up
         #wait for file to be in place
@@ -717,8 +716,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
-    print('## Finished job {:4d}'.format(JobNo))
-
+    print('## Finished job {:4d}: AOR {:8d} / ch {}'.format(JobNo, AOR, Ch))
 
 def subtract_median(JobNo,JobList,log,AstroFix):
     

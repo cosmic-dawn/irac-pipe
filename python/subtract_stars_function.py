@@ -1,14 +1,14 @@
 #!/opt/local/bin/python
 
+import sys
 import numpy as np
 from astropy.io import ascii
-from astropy import units as u
-from astropy.coordinates import SkyCoord
+#from astropy import units as u
+#from astropy.coordinates import SkyCoord
 
 from supermopex import *
 from spitzer_pipeline_functions import *
 
-import sys
 from optparse import OptionParser
 
 #parse the arguments
@@ -30,7 +30,7 @@ log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 # Joblist is generated in find_stars.py
 #print("-- Read job list written find_stars")  ##DEUG
-JobListName = OutputDIR + PIDname + '.jobs_subtract_stars.tbl'
+JobListName = OutputDIR + 'jobs.sub_stars'
 JobList = ascii.read(JobListName, format="ipac")
 Njobs = len(JobList)
 
@@ -41,7 +41,5 @@ if (JobNo > Njobs):
 StarData = ascii.read(RefinedStarCat, format="ipac") #read the data
 StarMatch = SkyCoord(StarData['ra']*u.deg, StarData['dec']*u.deg)
 
-
-#print("-- Starting star subtraction/correction for {} jobs using {} threads.".format(Njobs, Nproc))  ##DEBUG
 
 subtract_stars(JobNo, JobList=JobList, log=log, StarData=StarData, StarMatch=StarMatch)

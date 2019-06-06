@@ -1,10 +1,10 @@
 #!/opt/local/bin/python
 
+import sys,os
 import numpy as np
 from astropy.io import ascii
 from supermopex import *
 from spitzer_pipeline_functions import *
-import sys,os
 import multiprocessing as mp
 
 def run_subtractstars(JobNo):
@@ -17,11 +17,11 @@ rawlog = ascii.read(LogTable,format="ipac")
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 #read in the AOR properties log, generate a joblist and write it to file
+JobListName = OutputDIR + 'jobs.sub_stars'
 AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log, AORlog)
-JobListName = OutputDIR + PIDname + '.jobs_subtract_stars.tbl'
-Njobs = len(JobList)
 ascii.write(JobList, JobListName, format="ipac",overwrite=True)    
+Njobs = len(JobList)
 print("Built job list {} with {} jobs".format(JobListName, Njobs))
 
 print("- Launch subtract_stars_function with {} threads".format(Nproc))

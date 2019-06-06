@@ -55,7 +55,7 @@ if [[ $keep == "T" ]]; then
 else
 	echo "## delete command etc. files"
 	rm -f *.sh *.py *.out build.* *.err addkey* FIF.tbl cdf/log_*  # supermopex.py
-	rm -rf temp __pycache__ medians/* $odir/* countFiles.dat irac.log make_tiles*
+	rm -rf temp __pycache__ medians $odir countFiles.dat irac.log make_tiles*
 fi
 
 

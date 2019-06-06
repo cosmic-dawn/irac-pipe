@@ -1,23 +1,15 @@
 #!/opt/local/bin/python
 
-from supermopex import *
+import re, os,shutil
 import numpy as np
 from astropy.io import ascii
 from astropy import units as u
 from astropy.table import Table, Column, MaskedColumn
-import re
-import os,shutil
 from astropy import wcs
 from astropy.io import fits
-import multiprocessing as mp
 import datetime
-
-#not needed in python version right now
-#if os.path.exists(MosaicConfigFile):
-#    now = datetime.datetime.now()
-#    backup = MosaicConfigFile + '-' + str(now.strftime("%Y-%m-%d-%H:%M"))
-#    print('Backing up old mosaic config file to ' + str(backup))
-#    shutil.move(MosaicConfigFile,backup)
+import multiprocessing as mp
+from supermopex import *
 
 #get the PID for temp files
 pid = os.getpid() #get the PID for temp files
@@ -30,8 +22,7 @@ if not(os.path.exists(OutputDIR)):
 if not(os.path.exists(AORoutput)):
     os.mkdir(AORoutput)
 
-#find bcd files
-#find the fits files for parsing
+#find bcd files: find the fits files for parsing
 #use UNC files because they are only generated if the BCD pipleine didn't fail
 print('# Finding BCD Files')
 fileList = TMPDIR + '/' + str(pid) + ".files.lst"
@@ -39,19 +30,18 @@ cmd = "find " + str(RawDataDir) + " -name '*_bunc.fits' > " + fileList
 os.system(cmd)
 
 #read the list of files
-#files = np.recfromtxt(fileList)
 files = ascii.read(fileList,format="no_header")
 Nfiles = len(files)
 
-print('Found ' + str(Nfiles) + ', reading the headers and creating an inventory')
+print('Found {} file; read the headers and creating an inventory'.format(Nfiles))
 
 os.system('rm -rf ' + fileList) #remove the temp file
 
 LogOutput = list()
 for file in range(0,Nfiles):
     
-    progress = "Reading file " + str(file+1) + " of " + str(Nfiles)
-    print(progress) #,end="\r")
+    #progress = "Reading file " + str(file+1) + " of " + str(Nfiles)
+    #print(progress) #,end="\r")
 
     #setup this line of the logfile
     LogLine = list()
@@ -69,9 +59,7 @@ for file in range(0,Nfiles):
     imageHDU = fits.open(BCDFile) #Read image
 
     for item in range(0,len(HeaderItems)):
-        
         value = imageHDU[0].header.get(HeaderItems[item])
-        
         #convert HDR mode to 1/0 from T/F
         if (item == 'HDRMODE'):
             if (value == 'T'):
@@ -80,23 +68,20 @@ for file in range(0,Nfiles):
                 value = 0
 
         LogLine.append(value) #add the value to the log
-
     LogOutput.append(LogLine)  #Add line to log
 
 print()#line return for progress
-print("Processing inventory")
+print("Now processing inventory")
 
 #write the log file
 log = Table(rows=LogOutput,names=LogItems)
-ascii.write(log,LogTable,format="ipac",overwrite=True)
+ascii.write(log, LogTable, format="ipac",overwrite=True)
 
-#write the imcat format for legacy compatability
-cmd = 'ipac2lc ' + LogTable + ' > ' + LogFile
-os.system(cmd)
-
+##write the imcat format for legacy compatability
+#cmd = 'ipac2lc ' + LogTable + ' > ' + LogFile
+#os.system(cmd)
 
 #do some checking of the data
-
 #Get lists of different file types
 AORList = list(set(log['AOR']))#get a list of AORs
 ObjectList = list(set(log['Object']))#get a list of Instruments
@@ -157,24 +142,24 @@ for i in range(0,Naor):
         if (Nch > NIracBands):
             NIracBands=Nch
 
-    #should we do IRAC?
+    #should we do MIPS?
     if (AORLog['Instrument'][0] == 'MIPS'):
         domips=1
-        #How many IRAC bands
+        #How many MIPS bands
         if (Nch > NMipsBands):
                 NMipsBands=Nch
 
 
 #write the log file
 AORlog = Table(rows=AORinfo,names=('AOR','Object','Instrument','PID','ObsType','HDR','NumChannel'))
-ascii.write(AORlog,AORinfoTable,format="ipac",overwrite=True)
+ascii.write(AORlog, AORinfoTable, format="ipac", overwrite=True)
 
 print("Your data consists of:")
-print(str(Naor) + " AORs")
-print("Labled with " + str(len(ObjectList)) + " object names")
-print("Observed with " + str(len(PIDList)) + " Program IDs")
+print("- {} AORs".format(Naor))
+print("- labled with {} object names".format(len(ObjectList)))
+print("- Observed with {} Program IDs".format(len(PIDList)))
 print()
-print(AORlog)
+#print(AORlog)
 
 #make the file lists
 
@@ -249,7 +234,7 @@ if domips:
                listname = OutputDIR + PIDname + '.mips.' + str(AOR) + '.' + str(Ch) + '.' + suffix + '.lst' 
                np.savetxt(listname,OutputFileList,fmt='%s')
 
-    #make the FIF file list for IRAC
+    #make the FIF file list for MIPS
     files = log['Filename'][(log['Instrument']=='MIPS').nonzero()]
     OutputFileList = list() #holder for output list
     listname = OutputDIR + PIDname + '.mips.FIF.' + bcdSuffix + '.lst' 
