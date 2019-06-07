@@ -204,7 +204,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
 #        print(' find bright stars ...', end=' ')
         
         #do the bright stars for star subtraciton
-        command = "apex_user_list_1frame.pl -n findstar.nl -p " + PRF[cryo][Ch-1] + " -u " + BrightStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
+        command = "apex_user_list_1frame.pl -n find_brightstars.nl  -p " + PRF[cryo][Ch-1] + " -u " + BrightStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
         
         #move the output to the final location
@@ -224,7 +224,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
 
 #        print('astrometry stars')
         #now do the stars for astrometry
-        command = "apex_user_list_1frame.pl -n astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
+        command = "apex_user_list_1frame.pl -n find_astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
         
         #move the output to the final location
@@ -650,7 +650,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         os.system(fixunits)
 
         #Subtract the stars
-        subtractCMD='apex_qa.pl -n subtract_stars2.nl  -T ' + ImageFile + ' -E ' + tmpStars + ' -P ' + PRF[cryo][Ch-1] + ' -O ' + processTMPDIR + ' > /dev/null 2>&1'
+        subtractCMD='apex_qa.pl -n subtract_stars.nl  -T ' + ImageFile + ' -E ' + tmpStars + ' -P ' + PRF[cryo][Ch-1] + ' -O ' + processTMPDIR + ' > /dev/null 2>&1'
         #print(subtractCMD)
         os.system(subtractCMD)
         
