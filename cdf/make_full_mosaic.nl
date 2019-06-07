@@ -1,20 +1,20 @@
 compute_uncertainties_internally = 0
 have_uncertainties = 1
 run_fiducial_image_frame = 0
-run_mosaic_geom = 1
-run_medfilter = 1
+run_mosaic_geom = 0
+run_medfilter = 0
 run_detect_radhit = 0
 run_mosaic_interp = 1
-run_detect_outlier = 1
-run_mosaic_proj = 1
-run_mosaic_covg = 1
-run_mosaic_dual_outlier = 1
-run_level = 1
-run_mosaic_outlier = 1
-run_mosaic_box_outlier = 1
-run_mosaic_rmask = 1
+run_detect_outlier = 0
+run_mosaic_proj = 0
+run_mosaic_covg = 0
+run_mosaic_dual_outlier = 0
+run_level = 0
+run_mosaic_outlier = 0
+run_mosaic_box_outlier = 0
+run_mosaic_rmask = 0
 run_mosaic_reinterp = 0
-run_fix_coverage = 1
+run_fix_coverage = 0
 run_mosaic_coadder = 1
 run_median_mosaic = 1
 run_absolute_minimum_mosaic = 0
@@ -35,7 +35,8 @@ delete_intermediate_files = 1
 
 ###### Multi-processing Parameters ######
 do_multiprocess = 'manual'
-ncpu_multiprocess = 1
+# this should be the same as in make_tile.sh
+ncpu_multiprocess = 100
 
 
 

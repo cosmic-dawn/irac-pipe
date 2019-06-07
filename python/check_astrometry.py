@@ -38,7 +38,14 @@ Nrows = len(JobList)
 
 #Read the refined fluxes and postions
 StarData = ascii.read(StarTable,format="ipac") #read the data
-StarMatch = SkyCoord(StarData['ra'],StarData['dec'])
+
+#fill in missing proper motions with zeros
+StarData['pmra'].fill_value=0.0
+StarData['pmdec'].fill_value=0.0
+StarData['pmra_error'].fill_value=0.0
+StarData['pmdec_error'].fill_value=0.0
+StarData['parallax'].fill_value=1e-8
+
 
 
 print("Starting astrometry check with " + str(Nproc) + " threads.")

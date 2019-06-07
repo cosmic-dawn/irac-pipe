@@ -42,4 +42,9 @@ if (JobNo > Njobs):
 #Read in the table of Gaia stars for astrometry correction
 AstrometryStars = ascii.read(GaiaTable,format="ipac") #read the data
 
+#fill in zero proper motion for stars without measurementes
+AstrometryStars['pmra'].fill_value=0.0
+AstrometryStars['pmdec'].fill_value=0.0
+AstrometryStars['parallax'].fill_value=1e-8
+
 checkstar(JobNo,JobList,log=log,AstrometryStars=AstrometryStars)

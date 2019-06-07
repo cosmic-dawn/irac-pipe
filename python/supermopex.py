@@ -17,6 +17,7 @@
 #-----------------------------------------------------------------------------
 
 import numpy as np
+from astropy.time import Time
 
 RootNode   = '@NODE@'                 # node on which to work (not used by python)
 RootDIR    = '@ROOTDIR@/'             # root directory
@@ -51,6 +52,10 @@ GaiaTable = OutputDIR + 'gaia.tbl'
 TwomassTable = OutputDIR + '2mass.tbl'
 GaiaStarTable = OutputDIR + 'gaia-wise.tbl'
 TwomassStarTable = OutputDIR + '2mass-wise.tbl'
+
+#Epoch for astrometry
+GaiaEpoch = Time(2015.5,format='decimalyear')  #GAIA DR2 epoch
+AstrometryEpoch = Time(2015.5,format='decimalyear') #Desired epoch for astrometry, setting to Gaia since that is what Ultra-Vista is set to
 
 #Column to use for starID
 StarIDcol = 'wise_id'

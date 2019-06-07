@@ -56,7 +56,7 @@ if os.path.exists(GaiaTable):
     print("To get a new one rename or remove " + GaiaTable)
 else:
     #Get the GAIA catalog
-    print("Querying the GAIA DR1 catalog ....")
+    print("Querying the GAIA catalog ....")
     gaia_cat = Gaia.query_object_async(coordinate=GAIAcoord, width=dRA, height=dDEC)
     
     #Add fluxes in uJy
@@ -165,7 +165,7 @@ GaiaWise.rename_column('pmra_1', 'pmra')
 GaiaWise.rename_column('pmdec_1', 'pmdec')
 
 #make a list of good stars
-goodStars = GaiaWise[(GaiaWise['MatchDistance']<(1.0/3600))]['gaia_id','wise_id','ra','dec','ra_error','dec_error','pmra','pmra_error','pmdec','pmdec_error','g','bp','rp','w1','w2','w3','w4','MatchDistance']
+goodStars = GaiaWise[(GaiaWise['MatchDistance']<(1.0/3600))]['gaia_id','wise_id','ra','dec','ra_error','dec_error','pmra','pmra_error','pmdec','pmdec_error','parallax','parallax_error','g','bp','rp','w1','w2','w3','w4','MatchDistance']
 
 print("Writing merged Gaia-WISE catalog")
 ascii.write(goodStars,GaiaStarTable,format="ipac",overwrite=True)#save the catalog

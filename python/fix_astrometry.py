@@ -33,7 +33,14 @@ JobList = Table(rows=JobList,names=['JobNo','AOR','ExposureID','ChannelMax'])
 #Get the size of the array
 Nrows = len(JobList)
 #Read the refined fluxes and postions
-StarData = ascii.read(GaiaTable,format="ipac") 
+StarData = ascii.read(GaiaTable,format="ipac")
+
+#fill in missing proper motions with zeros
+StarData['pmra'].fill_value=0.0
+StarData['pmdec'].fill_value=0.0
+StarData['pmra_error'].fill_value=0.0
+StarData['pmdec_error'].fill_value=0.0
+StarData['parallax'].fill_value=1e-8
 
 
 print("Starting fix_astrometry on {} jobs with {} threads.".format(Nrows, Nproc))

@@ -45,7 +45,7 @@ def make_joblist(log,AORlog):
 #routine to apply proper motoins to GAIA catalog
 def applyGAIApm(MJD,StarData):
 
-    PMtime = (MJD-51543.0)/365.2422  #time since J2000 for proper motion correction
+    PMtime = (MJD-51558.5)/365.25   #time since 2015.5 (GAIA DR2 epoch) for proper motion correction
 
     #offset and weight values for astrometry
     RAstar = list()
@@ -64,6 +64,7 @@ def applyGAIApm(MJD,StarData):
         
         #Now RA
         #correct for proper motion if its known
+        #Gaia PM is in u*cos(dec)
         if ma.is_masked(StarData['pmra_error'][i]):
             RApm = 0.0
         else:
@@ -78,7 +79,7 @@ def applyGAIApm(MJD,StarData):
 
 def applyGAIApm_wError(MJD,StarData):
     
-    PMtime = (MJD-51543.0)/365.2422  #time since J2000 for proper motion correction
+    PMtime = (MJD-51558.5)/365.25  #time since 2015.5 (GAIA DR2 epoch) for proper motion correction
     
     #offset and weight values for astrometry
     RAstar = list()
@@ -139,6 +140,10 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     RAs    = log['RA'][LogIDX]
     DECs   = log['DEC'][LogIDX]
     
+    #convert the catalogs to astropy sky-coord format
+    BrightCoords=SkyCoord(BrightStars['ra'], BrightStars['dec'],pm_ra_cosdec=BrightStars['pmra'].filled(),pm_dec=BrightStars['pmdec'].filled(),distance=BrightStars['parallax'].filled(),obstime=GaiaEpoch,frame='icrs', unit="deg")
+    AstrometryCoords=SkyCoord(AstrometryStars['ra'], AstrometryStars['dec'],pm_ra_cosdec=AstrometryStars['pmra'].filled(),pm_dec=AstrometryStars['pmdec'].filled(),distance=AstrometryStars['parallax'].filled(),obstime=GaiaEpoch,frame='icrs', unit="deg")
+
     Nframes = len(files)    
     print('## Begin job    {:4d}: AOR {:8d} / ch {}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
     
@@ -189,16 +194,16 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
 
         #Cut Bright Star catalog to this frame
         #Transform GAIA catalog to current epoch
-        BrightPositions = applyGAIApm(MJD,BrightStars)
+        #BrightPositions = applyGAIApm(MJD,BrightStars)
+        BrightPositions = BrightCoords.apply_space_motion(Time(MJD,format='mjd'))
 
         #Cut catalog to this frame
-        BrightPositionsCoord = SkyCoord(BrightPositions, frame="fk5", unit="deg")
-        BrightSep = BrightPositionsCoord.separation(ImCenter)
+        BrightSep = BrightPositions.separation(ImCenter)
         BrightInFrame = BrightPositions[np.where(BrightSep.deg < 0.123)]
 
         #write out catalog for bright stars
         BrightStarTable = inputCat
-        ascii.write(Table(rows=BrightInFrame,names=['ra','dec']),BrightStarTable,format="ipac",overwrite=True)
+        ascii.write(Table([BrightInFrame.ra.deg,BrightInFrame.dec.deg],names=['ra','dec']),BrightStarTable,format="ipac",overwrite=True)
         
 #        print(' - Frame {:3d}; {:}:'.format(fileNo +1, inputData.split('/')[-1]), end=' ')
 #        print(' find bright stars ...', end=' ')
@@ -212,15 +217,17 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         shutil.move(FitTable,outputCat)
 
         #Transform GAIA catalog to current epoch
-        AstrometryPositions = applyGAIApm(MJD,AstrometryStars)
+        #AstrometryPositions = applyGAIApm(MJD,AstrometryStars)
+        AstrometryPositions = AstrometryCoords.apply_space_motion(Time(MJD,format='mjd'))
+
         #Cut catalog to this frame
-        AstrometryPositionsCoord = SkyCoord(AstrometryPositions, frame="fk5", unit="deg")
-        AstroSep = AstrometryPositionsCoord.separation(ImCenter)
+        #AstrometryPositionsCoord = SkyCoord(AstrometryPositions, frame="fk5", unit="deg")
+        AstroSep = AstrometryPositions.separation(ImCenter)
         AstroInFrame = AstrometryPositions[np.where(AstroSep.deg < 0.0675)]
 
         #write out catalog for Astrometry stars
         FitStarTable = inputCatAstro
-        ascii.write(Table(rows=AstroInFrame,names=['ra','dec']),FitStarTable,format="ipac",overwrite=True)
+        ascii.write(Table([AstroInFrame.ra.deg,AstroInFrame.dec.deg],names=['ra','dec']),FitStarTable,format="ipac",overwrite=True)
 
 #        print('astrometry stars')
         #now do the stars for astrometry
@@ -317,11 +324,22 @@ def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     AOR   =  JobList['AOR'][JobNo]
     MJD   = np.average(log['MJD'][((log['AOR']==AOR)&(log['ExposureID']==ID)).nonzero()])
     
-    PMtime = (MJD-51543.0)/365.2422  #time since J2000 for proper motion correction
+    FrameEpoch = Time(MJD,format='mjd')
+    
+
+    #convert to astropy coords format
+    StarCoords=SkyCoord(AstrometryStars['ra'], AstrometryStars['dec'],pm_ra_cosdec=AstrometryStars['pmra'].filled(),pm_dec=AstrometryStars['pmdec'].filled(),distance=AstrometryStars['parallax'].filled(),obstime=GaiaEpoch,frame='icrs', unit="deg")
+    #make a local copy of the table
+    StarData = AstrometryStars
+    
+    PMtime = (FrameEpoch.mjd-GaiaEpoch.mjd)/365.25  #time to GAIA in years for proper motion correction
     
     #do the proper motion correction to the MJD
-    AstrometryPositions = applyGAIApm_wError(MJD,AstrometryStars)
-    StarMatch = SkyCoord(AstrometryPositions['RA'],AstrometryPositions['DEC'],frame="fk5", unit="deg")
+    StarMatch = StarCoords.apply_space_motion(Time(MJD,format='mjd'))
+
+    #Add in the proper motion errors to the astrometry
+    StarData['dec_error'] = np.sqrt(StarData['dec_error']**2 + (StarData['pmdec_error'].filled()*PMtime)**2)
+    StarData['ra_error'] = np.sqrt(StarData['ra_error']**2 + (StarData['pmra_error'].filled()*PMtime)**2)
     
     files = log['Filename'][((log['AOR']==AOR)&(log['ExposureID']==ID)).nonzero()]
     DCElist = log['DCE'][((log['AOR']==AOR)&(log['ExposureID']==ID)).nonzero()]
@@ -360,18 +378,18 @@ def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
         for i in range(0,len(idx)):
             if ((FrameStars['status'][i]!=0)&(d2d[i].arcsec <= AstroMergeRad)):
                 
-                #Put pm corrected reference DEC and errror along with measurement in the array
-                DECstar.append(AstrometryPositions['DEC'][idx[i]])
-                DECstarErr.append(AstrometryPositions['dDEC'][idx[i]])
-                DECpmCorr.append(AstrometryPositions['DECpm'][idx[i]])
+                #Put pm corrected reference DEC and error along with measurement in the array
+                DECstar.append(StarData['dec'][idx[i]])
+                DECstarErr.append(StarData['dec_error'][idx[i]]/(1000.0*3600.0))  #convert to degrees
+                DECpmCorr.append(StarData['pmdec'].filled()[idx[i]]*PMtime/(1000.0*3600.0))#convert to degrees and multiply by time
 
                 DECmeas.append(FrameStars['Dec'][i])
                 DECmeasErr.append(FrameStars['delta_Dec'][i])
                 
                 #Put pm corrected reference RA and errror along with measurement in the array
-                RAstar.append(AstrometryPositions['RA'][idx[i]])
-                RAstarErr.append(AstrometryPositions['dRA'][idx[i]])
-                RApmCorr.append(AstrometryPositions['RApm'][idx[i]])
+                RAstar.append(StarData['ra'][idx[i]])
+                RAstarErr.append(StarData['ra_error'][idx[i]]/(1000.0*3600.0*np.cos(StarData['ra'][idx[i]]*0.017453293)))  #convert to degrees
+                RApmCorr.append(StarData['pmra'].filled()[idx[i]]*PMtime/(1000.0*3600.0*np.cos(StarData['ra'][idx[i]]*0.017453293)))#convert to degrees and multiply by time
 
                 RAmeas.append(FrameStars['RA'][i])
                 RAmeasErr.append(FrameStars['delta_RA'][i])
@@ -437,8 +455,12 @@ def check_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     
     PMtime = (MJD-51543.0)/365.2422  #time since J2000 for proper motion correction
     
+    #convert the catalogs to astropy sky-coord format
+    AstrometryCoords=SkyCoord(AstrometryStars['ra'], AstrometryStars['dec'],pm_ra_cosdec=AstrometryStars['pmra'].filled(),pm_dec=AstrometryStars['pmdec'].filled(),distance=AstrometryStars['parallax'].filled(),obstime=GaiaEpoch,frame='icrs', unit="deg")
+    
+
     #do the proper motion correction to the MJD
-    AstrometryPositions = applyGAIApm_wError(MJD,AstrometryStars)
+    AstrometryPositions = AstrometryCoords.apply_space_motion(Time(MJD,format='mjd'))
     StarMatch = SkyCoord(AstrometryPositions['RA'],AstrometryPositions['DEC'],frame="fk5", unit="deg")
     
     files = log['Filename'][((log['AOR']==AOR)&(log['ExposureID']==ID)).nonzero()]
