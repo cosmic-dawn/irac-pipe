@@ -304,7 +304,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
 
         print('Finding astrometry stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData.split('/')[-1]))
         #now do the stars for astrometry
-        command = "apex_user_list_1frame.pl -n astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
+        command = "apex_user_list_1frame.pl -n find_astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
         
         #move the output to the final location
@@ -460,8 +460,8 @@ def check_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     
 
     #do the proper motion correction to the MJD
-    AstrometryPositions = AstrometryCoords.apply_space_motion(Time(MJD,format='mjd'))
-    StarMatch = SkyCoord(AstrometryPositions['RA'],AstrometryPositions['DEC'],frame="fk5", unit="deg")
+    StarMatch = AstrometryCoords.apply_space_motion(Time(MJD,format='mjd'))
+    #StarMatch = SkyCoord(AstrometryPositions['RA'],AstrometryPositions['DEC'],frame="fk5", unit="deg")
     
     files = log['Filename'][((log['AOR']==AOR)&(log['ExposureID']==ID)).nonzero()]
     DCElist = log['DCE'][((log['AOR']==AOR)&(log['ExposureID']==ID)).nonzero()]
@@ -499,22 +499,22 @@ def check_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
         #loop over matches and calculate the offsets
         for i in range(0,len(idx)):
             if ((FrameStars['status'][i]!=0)&(d2d[i].arcsec <= AstroMergeRad)):
-                
-                #Put pm corrected reference DEC and errror along with measurement in the array
-                DECstar.append(AstrometryPositions['DEC'][idx[i]])
-                DECstarErr.append(AstrometryPositions['dDEC'][idx[i]])
-                DECpmCorr.append(AstrometryPositions['DECpm'][idx[i]])
+                #Put pm corrected reference DEC and error along with measurement in the array
+                DECstar.append(AstrometryStars['dec'][idx[i]])
+                DECstarErr.append(AstrometryStars['dec_error'][idx[i]]/(1000.0*3600.0))  #convert to degrees
+                DECpmCorr.append(AstrometryStars['pmdec'].filled()[idx[i]]*PMtime/(1000.0*3600.0))#convert to degrees and multiply by time
                 
                 DECmeas.append(FrameStars['Dec'][i])
                 DECmeasErr.append(FrameStars['delta_Dec'][i])
                 
                 #Put pm corrected reference RA and errror along with measurement in the array
-                RAstar.append(AstrometryPositions['RA'][idx[i]])
-                RAstarErr.append(AstrometryPositions['dRA'][idx[i]])
-                RApmCorr.append(AstrometryPositions['RApm'][idx[i]])
+                RAstar.append(AstrometryStars['ra'][idx[i]])
+                RAstarErr.append(AstrometryStars['ra_error'][idx[i]]/(1000.0*3600.0*np.cos(AstrometryStars['ra'][idx[i]]*0.017453293)))  #convert to degrees
+                RApmCorr.append(AstrometryStars['pmra'].filled()[idx[i]]*PMtime/(1000.0*3600.0*np.cos(AstrometryStars['ra'][idx[i]]*0.017453293)))#convert to degrees and multiply by time
                 
                 RAmeas.append(FrameStars['RA'][i])
                 RAmeasErr.append(FrameStars['delta_RA'][i])
+                
 
     #put the offests and errors into a masked array so we can do some outlier clipping and then estimate a weighted average offset
 
