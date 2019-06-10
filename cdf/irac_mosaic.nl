@@ -1,20 +1,20 @@
 compute_uncertainties_internally = 0
 have_uncertainties = 1
 run_fiducial_image_frame = 0
-run_mosaic_geom = 1
-run_medfilter = 1
+run_mosaic_geom = 0
+run_medfilter = 0
 run_detect_radhit = 0
 run_mosaic_interp = 1
-run_detect_outlier = 1
-run_mosaic_proj = 1
-run_mosaic_covg = 1
-run_mosaic_dual_outlier = 1
-run_level = 1
-run_mosaic_outlier = 1
-run_mosaic_box_outlier = 1
-run_mosaic_rmask = 1
-run_mosaic_reinterp = 1
-run_fix_coverage = 1
+run_detect_outlier = 0
+run_mosaic_proj = 0
+run_mosaic_covg = 0
+run_mosaic_dual_outlier = 0
+run_level = 0
+run_mosaic_outlier = 0
+run_mosaic_box_outlier = 0
+run_mosaic_rmask = 0
+run_mosaic_reinterp = 0
+run_fix_coverage = 0
 run_mosaic_coadder = 1
 
 #define output mosaics
@@ -30,7 +30,6 @@ create_outlier_mosaic = 0
 make_array_corr_files = 0
 make_array_corr_mosaic = 0
 
-
 sigma_weighted_coadd = 0
 keep_coadded_tiles = 1
 overwrite_dmask = 0
@@ -39,13 +38,14 @@ delete_intermediate_files = 1
 
 ###### Multi-processing Parameters ######
 do_multiprocess = 'manual'
-ncpu_multiprocess = 7
+# this should be the same as in make_tile.sh
+ncpu_multiprocess = 36
 
 
 
 USE_REFINED_POINTING = 0
-MOSAIC_PIXEL_RATIO_X = 1.0
-MOSAIC_PIXEL_RATIO_Y = 1.0
+MOSAIC_PIXEL_SIZE_X = -1.6667E-4
+MOSAIC_PIXEL_SIZE_Y = 1.6667E-4
 
 USE_DUAL_OUTLIER_FOR_RMASK = 1
 USE_BOX_OUTLIER_FOR_RMASK = 1
@@ -103,7 +103,7 @@ Radhit_Threshold = 6.0,
 &MOSAICINTIN
 GRID_RATIO = 2,
 DRIZ_FAC = 0.5,
-INTERP_METHOD = 1,
+INTERP_METHOD = 2,
 ALPHA = -0.5,
 FINERES = 0.0,
 &END

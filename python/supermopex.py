@@ -29,6 +29,7 @@ AORoutput  = RootDIR + 'medians/'     # output dir for AOR median images
 
 Nproc      = @NPROC@                  # Number of Processes
 PIDname    = '@PID@'                  # PID name 
+cluster    = 'none'                   #cluster name for setting temp files.  Currently only supports candide or none
 
 #--------------------- OTHER PARAMETERS ---------------------
 
@@ -67,7 +68,8 @@ StarTable = GaiaStarTable                         # use this for astrometry
 
 # Mosaic configuration files - for building tiles
 IRACMosaicGeomConfig = 'mosaic_geom.nl'
-IRACMosaicConfig     = 'mosaic_par.nl'
+IRACOutlierConfig    = 'irac_flag_outliers.nl'
+IRACMosaicConfig     = 'irac_mosaic.nl'
 # and for "old style" version
 #IRACMosaicConfig = 'mosaic_FF.nl'   
 

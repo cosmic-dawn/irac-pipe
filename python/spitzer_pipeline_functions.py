@@ -22,6 +22,20 @@ warnings.filterwarnings("ignore")
 
 from supermopex import *
 
+def scratch_dir_prefix(cluster,JobNo):
+    if cluster == 'candide':
+        locnode = os.uname().nodename.split('.')[0]  # name of process node
+        print(">> Processsing job {} on node {}".format(JobNo, locnode))
+
+        if (locnode == 'n04') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
+            processTMPDIRprefix = '/' + locnode + 'data/'
+        else:
+            processTMPDIRprefix = '/scratch/'
+    else:
+        processTMPDIRprefix = TMPDIR + '/'
+    
+    return(processTMPDIRprefix)
+
 
 def make_joblist(log,AORlog):
     #get a list of AORs
@@ -189,7 +203,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     
         #temporary files
         pid = os.getpid() #get the PID for temp files
-        processTMPDIR = TMPDIR + 'tmpfiles' + str(pid) + '-' + str(fileNo) + '/'
+        processTMPDIR = scratch_dir_prefix(cluster,JobNo) + 'tmpfiles' + str(pid) + '-' + str(fileNo) + '/'
         os.system('mkdir -p ' + processTMPDIR)
 
         #Cut Bright Star catalog to this frame
@@ -296,7 +310,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
 
         #temporary files
         pid = os.getpid() #get the PID for temp files
-        processTMPDIR = TMPDIR + 'tmpfiles' + str(pid) + '-' + str(fileNo) + '/'
+        processTMPDIR = scratch_dir_prefix(cluster,JobNo) + 'tmpfiles' + str(pid) + '-' + str(fileNo) + '/'
         os.system('mkdir -p ' + processTMPDIR)
         
         #write out catalog for Astrometry stars
@@ -636,7 +650,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         
         #temporary files
         pid = os.getpid() #get the PID for temp files
-        processTMPDIR = TMPDIR + 'tmpfiles' + str(pid) + '-' + str(fileNo) + '/'
+        processTMPDIR = scratch_dir_prefix(cluster,JobNo) + 'tmpfiles' + str(pid) + '-' + str(fileNo) + '/'
         os.system('mkdir -p ' + processTMPDIR)
         tmpStars = processTMPDIR + str(pid) + ".stars.tbl"
         residualImage = processTMPDIR + "Mosaic/residual_" + basename + '_' + ffSuffix + '.fits'
@@ -1076,7 +1090,7 @@ def run_mosaic_geometry(JobNo,JobList):
     
     #temporary files
     pid = os.getpid() #get the PID for temp files
-    processTMPDIR = TMPDIR + 'tmpdir_mg_' + str(JobNo) + '/'
+    processTMPDIR = scratch_dir_prefix(cluster,JobNo) + 'tmpdir_mg_' + str(JobNo) + '/'
     os.system('mkdir -p ' + processTMPDIR)
     
     #input lists
@@ -1104,19 +1118,14 @@ def run_mosaic_geometry(JobNo,JobList):
     
     return(num_files)
 
-def make_tile(JobNo,JobList):
+def find_outlier_tile(JobNo,JobList):
     
     Ch = JobList['Channel'][JobNo]
     Tile = JobList['TileNumber'][JobNo]
-    locnode = os.uname().nodename.split('.')[0]  # name of process node
-    print(">> Processsing job {} on node {}".format(JobNo, locnode))
     
     # temporary files:
     # use local scratch area on process node, if large, to avoid heavy network usage
-    if (locnode == 'n04') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
-        processTMPDIR = '/'+locnode+'data/tmpdir_'+PIDname+'_tile_j' + str(JobNo) #+ '/'
-    else:
-        processTMPDIR = '/scratch/tmpdir_'+PIDname+'_tile_j' + str(JobNo) #+ '/'
+    processTMPDIR =  scratch_dir_prefix(cluster,JobNo) + 'tmpdir_' + PIDname + '_tile_j' + str(JobNo) + '/'
     
     shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
@@ -1137,7 +1146,7 @@ def make_tile(JobNo,JobList):
     #Run Mosaic
     logfile = 'make_tile_'+str(JobNo)+'.log'
     print(">> logfile is {}".format(logfile))
-    cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
+    cmd = 'mosaic.pl -n ' + IRACOutlierConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
 #    cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR
     print(">> command line is:")
     print("   "+cmd)
@@ -1193,6 +1202,127 @@ def make_tile(JobNo,JobList):
         # shutil.copy doesn't take wildcards
         #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts', medmosaic)
 
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
+    except:
+        print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic_unc.fits not found")
+        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
+        os.system("cp -v {}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {}".format(processTMPDIR, medmosaicunc))
+        #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts',medmosaicunc)
+    
+    # clean up:  done in shell script if all products found
+    cleanupCMD = 'rm -rf ' + processTMPDIR
+#    print(cleanupCMD)
+#    os.system(cleanupCMD)
+
+
+#used to flag rmask files in multiple outlier rejection tiles above
+def get_rmask_dce(FileNo,RmaskFileList):
+    RmaskFile = RmaskFileList['Filename'][FileNo] #get the file name
+    
+    imageHDU = fits.open(RmaskFile) #Read image
+    DCEnumber = imageHDU[0].header.get('DCEID') #Read the DCE number
+    imageHDU.close()
+    return(DCEnumber)
+
+#used to combine the rmaks together into single files and copy them back to the data directory
+def combine_rmasks(JobNo,RmaskFileList,log):
+    DCE =  log['DCE'][JobNo]
+    Ch = log['Channel'][JobNo]
+    basefilename = log['Filename'][JobNo]
+    RMaskFiles = list(set(RmaskFileList['Filename'][(RmaskFileList['DCE']==DCE).nonzero()]))
+    
+    #setup the output file
+    inputSuffix  = '_' + bcdSuffix + '.fits'
+    outputSuffix = '_' + rmaskSuffix + '.fits'
+    outputRMask = re.sub(inputSuffix,outputSuffix,basefilename)
+    
+    Rmask_data = np.zeros([256,256],dtype=np.uint8)
+    
+    for rmask in RMaskFiles:
+        imageHDU = fits.open(rmask) #Read image
+        Rmask_data = Rmask_data | imageHDU[0].data #copy over the mask data in the overlapping area, set rest to 0
+    
+    imageHDU[0].data = Rmask_data
+    imageHDU.writeto(outputRMask,overwrite='True')
+    imageHDU.close()
+    print("Wrote combined Rmask to " + outputRMask)
+
+def make_mosaic(Ch):
+    
+    # temporary files:
+    # use local scratch area on process node, if large, to avoid heavy network usage
+    processTMPDIR =  scratch_dir_prefix(cluster,Ch) + 'tmpdir_' + PIDname + '_mosaic_Ch' + str(Ch) + '/'
+    
+    shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
+    os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
+    
+    if os.path.dirname(processTMPDIR):
+        print(">> Clean temp dir {} created".format(processTMPDIR))
+    else:
+        print("## ERROR: could not create temp dir .... quitting")
+        sys.exit(3)
+
+    print(">> Using temp dir {}".format(processTMPDIR))
+
+    #input lists
+    imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
+    masklist  = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + starMaskSuffix + '.lst'
+    unclist   = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + ScaledUncSuffix + '.lst'
+    rmasklist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.rmask.lst'
+
+    #input FIF
+    iracFIF = OutputDIR + PIDname + '.irac.FIF.tbl'
+
+    #Run Mosaic
+    logfile = 'make_mosaic_'+str(Ch)+'.log'
+    print(">> logfile is {}".format(logfile))
+    cmd = 'mosaic.pl -n ' + IRACMosaicConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -R ' + rmasklist + ' -F ' + iracFIF + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
+    print(">> command line is:")
+    print("   "+cmd)
+    os.system(cmd)
+    
+    #move the files
+    basename = OutputDIR + PIDname + '.irac.'
+    print(">> Products root name: {}".format(Ch))
+    
+    mosaic = basename + str(Ch) + '.mosaic.fits'
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits',mosaic)
+    except:
+        print("##ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
+
+    mosaicunc = basename + str(Ch) + '.mosaic_unc.fits'
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
+    except:
+        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_unc.fits not found")
+
+    mosaiccov = basename + str(Ch) + '.mosaic_cov.fits'
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
+    except:
+        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_cov.fits not found")
+
+    mosaicstd = basename + str(Ch) + '.mosaic_std.fits'
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
+    except:
+        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_std.fits not found")
+
+    # cp the median_mosaic products to the output dir
+    medmosaic = basename + str(Ch) + '.median_mosaic.fits'
+    medmosaicunc = basename + str(Ch) + '.median_mosaic_unc.fits'
+    
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic.fits',medmosaic)
+    except:
+        print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic.fits not found")
+        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead")
+        os.system("cp -v {}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {}".format(processTMPDIR, medmosaic))
+        # shutil.copy doesn't take wildcards
+        #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts', medmosaic)
+    
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
     except:

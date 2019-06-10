@@ -11,6 +11,45 @@ import datetime
 import multiprocessing as mp
 from supermopex import *
 
+def read_header():
+    #setup this line of the logfile
+    LogLine = list()
+    
+    BCDfilename=files['col1'][file]
+    
+    #Setup file suffixes re replace
+    inputSuffix  = '_' + UncSuffix + '.fits'  #used in search
+    outputSuffix = '_' + bcdSuffix + '.fits'
+    BCDFile = re.sub(inputSuffix,outputSuffix,BCDfilename) #Make the filename for the log file
+    
+    LogLine.append(BCDFile)
+    
+    #read the fits file
+    imageHDU = fits.open(BCDFile) #Read image
+    
+    for item in range(0,len(HeaderItems)):
+        value = imageHDU[0].header.get(HeaderItems[item])
+        #convert HDR mode to 1/0 from T/F
+        if (item == 'HDRMODE'):
+            if (value == 'T'):
+                value = 1
+            else:
+                value = 0
+
+    LogLine.append(value) #add the value to the log
+
+#Do some checking to see if the BCD header is good, reject frmae if it is not
+good=1
+    if imageHDU[0].header.get('FRAMEDLY') <= 0:  #reject if frame delay is not positive
+        good = 0
+if imageHDU[0].header.get('CHNLNUM') > 4:  #reject if channel number too high
+    good = 0
+    
+    if good > 0:
+        LogOutput.append(LogLine)  #Add line to log
+else:
+    print("Rejecting frame " + file + " because of bad header!")
+
 #get the PID for temp files
 pid = os.getpid() #get the PID for temp files
 
@@ -43,43 +82,7 @@ for file in range(0,Nfiles):
     #progress = "Reading file " + str(file+1) + " of " + str(Nfiles)
     #print(progress) #,end="\r")
 
-    #setup this line of the logfile
-    LogLine = list()
-    
-    BCDfilename=files['col1'][file]
 
-    #Setup file suffixes re replace
-    inputSuffix  = '_' + UncSuffix + '.fits'  #used in search
-    outputSuffix = '_' + bcdSuffix + '.fits'
-    BCDFile = re.sub(inputSuffix,outputSuffix,BCDfilename) #Make the filename for the log file
-    
-    LogLine.append(BCDFile)
-
-    #read the fits file
-    imageHDU = fits.open(BCDFile) #Read image
-
-    for item in range(0,len(HeaderItems)):
-        value = imageHDU[0].header.get(HeaderItems[item])
-        #convert HDR mode to 1/0 from T/F
-        if (item == 'HDRMODE'):
-            if (value == 'T'):
-                value = 1
-            else:
-                value = 0
-
-        LogLine.append(value) #add the value to the log
-
-    #Do some checking to see if the BCD header is good, reject frmae if it is not
-    good=1
-    if imageHDU[0].header.get('FRAMEDLY') <= 0:  #reject if frame delay is not positive
-        good = 0
-    if imageHDU[0].header.get('CHNLNUM') > 4:  #reject if channel number too high
-        good = 0
-
-    if good > 0:
-        LogOutput.append(LogLine)  #Add line to log
-    else:
-        print("Rejecting frame " + file + " because of bad header!")
 
 print()#line return for progress
 print("Now processing inventory")

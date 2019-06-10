@@ -30,8 +30,12 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
         cmd = 'mosaic.pl -n irac_FIF.nl -I ' + FIFlist + ' -O ' + TMPDIR
         os.system(cmd)
         
+        # copy the FIF over
+        shutil.copy('FIF.tbl',iracFIF)
+
         # read in the FIF
         FIFfile = open('FIF.tbl',"r")
+        
         FIFlines = FIFfile.readlines()
         linecnt=0
         for line in FIFlines:

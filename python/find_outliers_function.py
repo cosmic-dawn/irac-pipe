@@ -21,8 +21,15 @@ if len(args) < 1:
     parser.error("Incorrect number of arguments.")
 
 #read job number
-Ch=int(args[0])
+JobNo=int(args[0])
 
-make_mosaic(Ch)
+#WRead in the list of tiles
+JobList = ascii.read(TileListFile,format="ipac")
+Njobs = len(JobList)
+
+if (JobNo > Njobs):
+    die("Requested job number greater than number of jobs available " + str(Njobs) + "!");
+
+find_outlier_tile(JobNo,JobList=JobList)
 
 
