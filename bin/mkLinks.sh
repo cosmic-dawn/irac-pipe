@@ -18,7 +18,7 @@
 #RAW=/n08data/Spitzer/COSMOS   # ==> /n09data/COSM
 #RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmctr    central part of COSMOS field
 #RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmos155   r155* AORs (45) of COSMOS field
-RAW=/n09data/Spitzer/COSMOS_New     # ==> /n09data/COSnew      75 AORs
+RAW=/n08data/Spitzer/COSMOS     # ==> /n09data/COSnew      75 AORs
 
 loc=$(pwd | cut -d\/ -f3)   # nominally name of Spitzer field 
 

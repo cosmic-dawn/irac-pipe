@@ -275,7 +275,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
     
     Nframes = len(files)
 
-    print('Checking stars in job {:5d}: AOR {:} Channel {:}'.format(JobNo, Njobs, AOR, Ch))
+    print('## Check stars job {:4d}: AOR {:} Ch {:} with {:} frames'.format(JobNo, AOR, Ch, Nframes))
  
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -316,7 +316,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         #write out catalog for Astrometry stars
         FitStarTable = inputCatAstro
 
-        print('Finding astrometry stars in {:6d} of {:6d}; {:})'.format(fileNo +1, Nframes, inputData.split('/')[-1]))
+        print('Find astrometry stars in frame  {:3d}; {:}'.format(fileNo +1, inputData.split('/')[-1]))
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n find_astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -329,7 +329,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
-    print('## Finished job {:4d}'.format(JobNo))
+    print('## Finished job    {:4d}'.format(JobNo))
     
 def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     

@@ -34,12 +34,13 @@
 # v2.14: improve handling of large number of jobs in make_tiles    (16.apr.19)
 # v2.15: fix logfiles, checks on products, improve logging         (26.apr.19)
 # v2.16: more checks on products, improve logging of modules       (10.may.19)
-# v2.17: improved Irsa queries; find_stars walltime fn(Nframes)    (07.jun.19)
+# v2.17: improved Irsa queries; find_stars walltime now dynamic    (07.jun.19)
+# v2.18: dynamic walltime for other modules; preps for new modules (11.jun.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.17 (07.june.19)"
+vers="2.18 (11.june.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -348,8 +349,8 @@ if [ $1 == "setup" ]; then
 	ec "# >>>>  1. Setup pipeline  <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=setup_pipeline
-	chk_prev NULL 
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev NULL 
 	if [ -e $fn ]; then	comm="rsync -au $fn ."; ec "$comm"; $comm; fi
 
 	write_module
@@ -399,8 +400,8 @@ if [ $1 == "catals" ] || [ $1 == "get_catals" ] || [ $auto == "T" ]; then
 	ec "# >>>>  2. Get catalogues  <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=get_catalogs 
-	chk_prev setup_pipeline
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev setup_pipeline
 
 	if [ $(hostname) == "candid01.iap.fr" ]; then
 		echo "# Running ${module}.py on login node" > ${module}.out
@@ -438,8 +439,8 @@ if [ $1 == "ffcorr" ] || [ $auto == "T" ]; then
 	ec "# >>>>  3. First frame correction  <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=first_frame_corr
-	chk_prev get_catalogs
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev get_catalogs
 
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
@@ -473,6 +474,7 @@ if [ $1 == "find_stars" ] || [ $1 == "find" ] || [ $auto == "T" ]; then
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
 	wtime=$((1+$Nframes/$Nproc/60)):00:00
+	ec "# for $Nframes frames and $Nproc threads, set PBS walltime to $wtime"
 	#echo "$Nframes $Nproc ==> $wtime"  ; exit
 
 	chk_prev first_frame_corr
@@ -525,11 +527,17 @@ if [ $1 == "subtract_stars" ] || [ $1 == "substars" ] || [ $auto == "T" ]; then
 	ec "# >>>>  6. Subtract stars  <<<<"
 	ec "#-----------------------------------------------------------------------------"
  	module=subtract_stars
-	chk_prev merge_stars
 	bdate=$(date "+%s.%N")       # start time/date
+	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
+	wtime=$((1+$Nframes/$Nproc/60)):00:00
+	ec "# for $Nframes frames and $Nproc threads, set PBS walltime to $wtime"
+	chk_prev merge_stars
 
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
+
+	# fix logfile
+	sed -i 's/ts\#\#/ts\n\#\#/' $module.out
 	chk_outputs 
 	nbeg=$(grep '## Begin ' $module.out | wc -l)
 	nfin=$(grep '## Finis ' $module.out | wc -l)
@@ -550,8 +558,8 @@ if [[ $1 =~ "make_medians" ]] || [ $1 == "medians" ] || [ $auto == "T" ]; then
 	ec "# >>>>  7. Make medians   <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=make_medians
-	chk_prev subtract_stars
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev subtract_stars
 
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
@@ -574,6 +582,7 @@ if [[ $1 =~ "fix_astrometry" ]] || [ $1 == "astrom" ] || [ $auto == "T" ]; then
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.3 min/frame; about 1/3 that of find_stars
 	wtime=$((1+$Nframes/$Nproc/60/3)):00:00
+	ec "# for $Nframes frames and $Nproc threads, set PBS walltime to $wtime"
 	chk_prev make_medians
 
 	write_module
@@ -592,8 +601,8 @@ if  [[ $1 =~ "subtract_medians" ]] || [ $1 == "submeds" ] ||[ $auto == "T" ]; th
 	ec "# >>>>  9. Subtract medians    <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=subtract_medians
-	chk_prev fix_astrometry
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev fix_astrometry
 
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
@@ -627,6 +636,7 @@ if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.3 min/frame; about 1/3 that of find_stars
 	wtime=$((1+$Nframes/$Nproc/60/3)):00:00
+	ec "# for $Nframes frames and $Nproc threads, set PBS walltime to $wtime"
 	chk_prev subtract_medians
 
 	write_module
@@ -645,8 +655,8 @@ if [[ $1 =~ "check_astrometry" ]] || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; the
 	ec "# >>>>  11. Check astrometry   <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=check_astrometry
-	chk_prev subtract_medians
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev subtract_medians
 
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
@@ -664,8 +674,8 @@ if [[ $1 =~ "setup_tiles" ]] || [ $auto == "T" ]; then
 	ec "# >>>>  12. Setup tiles for mosaic    <<<<"
 	ec "#-----------------------------------------------------------------------------"
 	module=setup_tiles
-	chk_prev subtract_medians
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev subtract_medians
 
 	write_module
 	ec "# Job $module finished - unix walltime=$(wt)"
@@ -683,6 +693,14 @@ if [[ $1 =~ "setup_tiles" ]] || [ $auto == "T" ]; then
 
 	end_step
 fi
+ec "#### Quit here for testing updated scripts from 10.jun.2019; "
+ec "#### continue by hand: "
+ec "     qsub -IX -l nodes=n09:ppn=41,walltime=21:00:00"
+ec "     sm2; pydir=~/softs/irac-pipe/python"
+ec "     cp $pydir/find_outliers*.py $pydir/combine_rmasks.py  $pydir/make_mosaics*.py ."
+#ec "     python find_outliers.py" #ec "     python combine_rmasks.py" #ec "     python make_mosaics.py"
+ec "     python find_outliers.py; python combine_rmasks.py; python make_mosaics.py"
+exit     #### for testing new/updated scripts from 10.jun.2019
 
 #-----------------------------------------------------------------------------
 ### - 13. do_tiles:  make_tiles
@@ -691,8 +709,8 @@ fi
 if [[ $1 =~ "make_tiles" ]] || [ $1 == "do_tiles" ] || [ $auto == "T" ]; then
 
 	module=make_tile
-	chk_prev setup_tiles
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev setup_tiles
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  13. Build the tiles    <<<<"
@@ -844,8 +862,8 @@ if [ $1 == "mosaic" ] || [ $1 == "oldmosaic" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
 	module=prep_mosaic
-	chk_prev subtract_medians
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev subtract_medians
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  10a. prepare for building mosaics - part 0  <<<<"
@@ -964,8 +982,8 @@ fi
 if [ $1 == "finish" ] || [ $auto == "T" ]; then
 
 	if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-	chk_prev build_mosaic_p1_ch1   # for now
 	bdate=$(date "+%s.%N")       # start time/date
+	chk_prev build_mosaic_p1_ch1   # for now
 
 	ec "#-----------------------------------------------------------------------------"
 	ec "# >>>>  11. Build mosaics - part 2   <<<<"
