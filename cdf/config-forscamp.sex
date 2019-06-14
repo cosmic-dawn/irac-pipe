@@ -1,0 +1,82 @@
+# Default configuration file for SExtractor V1.2b14 - > 2.0
+# EB 23/07/98
+# (*) indicates parameters which can be omitted from this config file.
+
+#-------------------------------- Catalog ------------------------------------
+
+CATALOG_NAME	test.ldac # name of the output catalog
+CATALOG_TYPE	FITS_LDAC      # "NONE","ASCII_HEAD","ASCII","FITS_1.0"
+				# or "FITS_LDAC"
+
+PARAMETERS_NAME	${HOME}/src/astromatic-config/photom_scamp.param	# name of the file containing catalog contents
+
+#------------------------------- Extraction ----------------------------------
+
+DETECT_TYPE	CCD		# "CCD" or "PHOTO" (*)
+DETECT_MINAREA	3		# minimum number of pixels above threshold
+DETECT_THRESH	10.0 # <sigmas> or <threshold>,<ZP> in mag.arcsec-2
+ANALYSIS_THRESH	10.0 # <sigmas> or <threshold>,<ZP> in mag.arcsec-2
+THRESH_TYPE     RELATIVE
+FILTER          Y
+FILTER_NAME	${HOME}/src/astromatic-config/gauss_4.0_7x7.conv 	# name of the file containing the filter
+
+DEBLEND_NTHRESH	32		# Number of deblending sub-thresholds
+DEBLEND_MINCONT	0.001		# Minimum contrast parameter for deblending
+
+CLEAN           Y
+CLEAN_PARAM	1.0		# Cleaning efficiency
+MASK_TYPE	CORRECT		# type of detection MASKing: can be one of
+				# "NONE", "BLANK" or "CORRECT"
+
+#------------------------------ Photometry -----------------------------------
+
+PHOT_APERTURES  13.,26..	 # MAG_APER aperture diameter(s) in pixels
+PHOT_FLUXFRAC   0.5      # Fraction of FLUX_AUTO defining FLUX_RADIUS
+PHOT_AUTOPARAMS	2.5, 3.5	# MAG_AUTO parameters: <Kron_fact>,<min_radius>
+SATUR_LEVEL	1700000.		# level (in ADUs) at which arises saturation
+PHOT_AUTOAPERS  13.0, 13.0      # MAG_AUTO minimum apertures: estimation, photometry
+
+MAG_ZEROPOINT	30.00		# magnitude zero-point 
+MAG_GAMMA	4.0		# gamma of emulsion (for photographic scans)
+GAIN		100.000	# detector gain in e-/ADU.
+PIXEL_SCALE	0.0	# size of pixel in arcsec (0=use FITS WCS info).
+
+#------------------------- Star/Galaxy Separation ----------------------------
+
+SEEING_FWHM	0.9		# stellar FWHM in arcsec
+STARNNW_NAME	${HOME}/astromatic-config/default.nnw	# Neural-Network_Weight table filename
+
+#------------------------------ Background -----------------------------------
+
+BACK_SIZE	128		# Background mesh: <size> or <width>,<height>
+BACK_FILTERSIZE	9		# Background filter: <size> or <width>,<height>
+BACKPHOTO_TYPE	LOCAL		# can be "GLOBAL" or "LOCAL" (*)
+BACKPHOTO_THICK	30		# thickness of the background LOCAL annulus (*)
+BACK_TYPE       AUTO
+BACK_VALUE	0
+#------------------------------ Check Image ----------------------------------
+
+CHECKIMAGE_TYPE	NONE  # can be one of "NONE", "IDENTICAL", 
+				# "BACKGROUND", "-BACKGROUND", "BACKGROUND_RMS", 
+				# "MINIBACKGROUND", "MINIBACK_RMS", 
+				# "FILTERED", "OBJECTS", "-OBJECTS", 
+				# "SEGMENTATION", or "APERTURES",
+
+CHECKIMAGE_NAME	check.fits	# Filename for the check-image (*)
+
+#--------------------- Memory (change with caution!) -------------------------
+
+MEMORY_OBJSTACK	2000		# number of objects in stack
+MEMORY_PIXSTACK	500000		# number of pixels in stack
+MEMORY_BUFSIZE	512		# number of lines in buffer
+
+#----------------------------- Miscellaneous ---------------------------------
+
+VERBOSE_TYPE	NORMAL		# can be "QUIET", "NORMAL" or "FULL" (*)
+
+#------------------------------- New Stuff -----------------------------------
+
+WEIGHT_TYPE    MAP_WEIGHT
+#WEIGHT_TYPE    BACKGROUND
+
+

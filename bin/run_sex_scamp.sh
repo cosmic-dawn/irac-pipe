@@ -11,7 +11,7 @@ echo "--------------------------------------------------------------------------
 echo ">> Begin sex/scamp ..."
 
 #slsdir=/home/moneti/sls
-confdir=/home/moneti/sls/cdf
+confdir=/home/moneti/softs/irac-pipe/cdf
 conf=$confdir/config-forscamp.sex
 para=$confdir/photom_scamp.param
 
@@ -124,7 +124,7 @@ echo " scamp Astrom detections:"
 for f in *scamp.log; do echo "$f $(grep detections\ load $f)"; done
 
 echo " scamp Astrom stats:"
-grep -A2 external cos45.irac.?.mosaic_scamp.log | grep Group
+grep -A2 external $PID.irac.?.mosaic_scamp.log | grep Group
 
 exit 0
 
