@@ -79,7 +79,7 @@ for file in range(0,Nfiles):
     if good > 0:
         LogOutput.append(LogLine)  #Add line to log
     else:
-        print("Rejecting frame " + file + " because of bad header!")
+        print("Rejecting frame {:} because of bad header!".format(file))
 
 print()#line return for progress
 print("Now processing inventory")
