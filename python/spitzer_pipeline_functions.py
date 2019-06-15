@@ -781,9 +781,9 @@ def subtract_median(JobNo,JobList,log,AstroFix):
     print('Processing AOR {} Chan {} with {} frames'.format(AOR, Ch, Nframes))
 
     for frame in range(0,Nframes):
-        BCDfilename = files[frame]
+        BCDfilename = files[frame] 
         DCE = DCElist[frame]
-        
+
         #get the offset in RA/DEC
         dRA = np.double(AstroFix['dRA'][(AstroFix['DCE']==DCE).nonzero()])
         dDEC = np.double(AstroFix['dDEC'][(AstroFix['DCE']==DCE).nonzero()])
@@ -815,6 +815,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
             repIDX=int(repIDX)
         
         #Read image in, subtract median
+        #print("DEBUG: open image file {:} ".format(ImageFile))
         imageHDU = fits.open(ImageFile) #Read image
         imageData = ma.masked_invalid(imageHDU[0].data)
         imageData= imageData - medianData[repIDX] #Subtract median image
@@ -853,7 +854,10 @@ def subtract_median(JobNo,JobList,log,AstroFix):
         imageHDU[0].data-=median #subtract the median background level
         imageHDU[0].header['CRVAL1']+=dRA #fix the astrometry
         imageHDU[0].header['CRVAL2']+=dDEC
+        goodRA = imageHDU[0].header['CRVAL1']
+        goodDE = imageHDU[0].header['CRVAL2']
         imageHDU.writeto(SubtractedFile,overwrite='True') #write output image
+        #print("DEBUG: wrote sub file  {:} ".format(SubtractedFile))
         
         #scale the RMS to the correct value due to the incorrect bias pedistle
         #we want the variance of the background and the noise image to match in an additive fassion
@@ -861,6 +865,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
         
         #read the rms data and mask it
         rmsHDU = fits.open(NoiseFile) #read the noise file
+        #print("DEBUG: open noise file {:} ".format(NoiseFile))
         rmsImage = ma.masked_invalid(rmsHDU[0].data) #mask bad values
         rmsImage.mask += imageData.mask #apply same mask as used to measure RMS in image, this removes objects and gets rms of the background
         
@@ -868,11 +873,14 @@ def subtract_median(JobNo,JobList,log,AstroFix):
         goodRMS = ma.MaskedArray.compressed(rmsImage)  #kudge to get rid of lower case nans
         var = ma.average(np.power(goodRMS,2)) #calcualte the average variance
         scaleLevel = var-rms*rms #determine the pedistle level
-        
+        #print("DEBUG: Pedestal level: {}".format(scaleLevel))
+
         rmsHDU[0].data = np.sqrt(rmsHDU[0].data*rmsHDU[0].data-scaleLevel) #subtract the pedistle
-        rmsHDU[0].header['CRVAL1']+=dRA #fix the astrometry
-        rmsHDU[0].header['CRVAL2']+=dDEC
+        rmsHDU[0].header['CRVAL1'] = goodRA  #+=dRA #fix the astrometry
+        rmsHDU[0].header['CRVAL2'] = goodDE  #+=dDEC
         rmsHDU.writeto(ScaledNoiseFile,overwrite='True') #write output scaled noise
+        #print("DEBUG: wrote scaled noise {:} ".format(ScaledNoiseFile))
+        #print("DEBUG: =======  Finished with frame {}  ========".format(frame))
 
 def make_median_image(JobNo,JobList,log,AORlog):
     
