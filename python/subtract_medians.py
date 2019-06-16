@@ -27,7 +27,7 @@ JobList = make_joblist(log,AORlog)
 Njobs = len(JobList)
 
 # AMo: write out the joblist
-JobListName = OutputDIR + PIDname + '.jobs_subtract_medians.tbl'
+JobListName = OutputDIR + 'jobs.subtract_medians'
 ascii.write(JobList, JobListName, format="ipac",overwrite=True)    
 print("Wrote job list {} with {} jobs".format(JobListName, Njobs))
 

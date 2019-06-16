@@ -46,7 +46,7 @@ os.system(cmd)
 ##JobList = make_joblist(log,AORlog)
 
 # AMo: read the job list rather than re-building it
-JobListName = OutputDIR + PIDname + '.jobs_subtract_medians.tbl'
+JobListName = OutputDIR + 'jobs.subtract_medians'
 JobList = ascii.read(JobListName, format="ipac")
 #print("Read ascii jobs list table")                         # debug
 
