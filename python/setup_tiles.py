@@ -26,7 +26,7 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
         FIFlist = OutputDIR + PIDname + '.irac.FIF.' + corDataSuffix + '.lst' 
         iracFIF = OutputDIR + PIDname + '.irac.FIF.tbl' 
         # now run fiducial_frame.pl (wrapper forFIF  fiducial_image_frame) to build header_list.tbl
-        print('==> Run FIF to figure out mosaic geometry (build header_list.tbl')
+        print('==> Run FIF to figure out mosaic geometry (build header_list.tbl)')
         cmd = 'mosaic.pl -n irac_FIF.nl -I ' + FIFlist + ' -O ' + TMPDIR
         os.system(cmd)
         
