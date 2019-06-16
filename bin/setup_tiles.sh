@@ -6,8 +6,8 @@
 #PBS -l nodes=node48cores:ppn=@NPROC@,walltime=24:00:00
 #
 #-----------------------------------------------------------------------------
-# File:     merge_stars.sh @INFO@
-# Purpose:  wrapper for merge_stars.py
+# File:     setup_tiles.sh @INFO@
+# Purpose:  wrapper for setup_tiles.py
 #-----------------------------------------------------------------------------
 set -u 
 
@@ -22,7 +22,7 @@ wt() { echo "$(date "+%s.%N") $bdate" | \
 # load needed softs and set paths
 
 module () {  eval $(/usr/bin/modulecmd bash $*); }
-module purge ; module load intelpython/3   mopex 
+module purge ; module load intelpython/3-2019.4   mopex 
 
 #-----------------------------------------------------------------------------
 

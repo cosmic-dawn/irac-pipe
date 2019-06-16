@@ -22,7 +22,7 @@ wt() { echo "$(date "+%s.%N") $bdate" | \
 # load needed softs and set paths
 
 module () {  eval $(/usr/bin/modulecmd bash $*); }
-module purge ; module load intelpython/3   mopex 
+module purge ; module load intelpython/3-2019.4   mopex 
 
 mexec=$(which mosaic.pl | cut -d\/ -f1-4)
 

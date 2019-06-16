@@ -22,7 +22,7 @@ wt() { echo "$(date "+%s.%N") $bdate" | \
 
 # load needed softs and set paths
 module () {	 eval $(/usr/bin/modulecmd bash $*); }
-module purge ; module load intelpython/3   
+module purge ; module load intelpython/3-2019.4   
 
 use_rel=@USE_REL@
 if [ $use_rel == "T" ] || [ $use_rel == "True" ]; then
