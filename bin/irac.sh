@@ -36,11 +36,12 @@
 # v2.16: more checks on products, improve logging of modules       (10.may.19)
 # v2.17: improved Irsa queries; find_stars walltime now dynamic    (07.jun.19)
 # v2.18: dynamic walltime for other modules; preps for new modules (11.jun.19)
+# v2.19: switch to intelpython/3-2019.4 and other minor changes    (19.jun.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.18 (11.june.19)"
+vers="2.19 (19.june.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -357,9 +358,13 @@ if [ $1 == "setup" ]; then
 	ec "# Job $module finished - unix walltime=$(wt)"
 	chk_outputs
 
+	nfra=$(grep Found $module.out | cut -d\  -f2)
+	nrej=$(grep Rejecting $module.out | wc -l)
+	ec "# Found $nfra frames; rejected $nrej because of bad header"
+
 	# other results
 	Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
-	ec "# Num images: $Nframes"
+	ec "# Num frames kept in $odir/$ltab: $Nframes"
 	ec "# - in Ch1:	   $(grep ch1 $odir/$ltab | wc -l)"
 	ec "# - in Ch2:	   $(grep ch2 $odir/$ltab | wc -l)"
 	ec "# - in Ch3:	   $(grep ch3 $odir/$ltab | wc -l)"
@@ -697,7 +702,7 @@ ec "#### Quit here for testing updated scripts from 10.jun.2019; "
 ec "#### continue by hand: "
 ec "     qsub -IX -l nodes=n09:ppn=41,walltime=21:00:00"
 ec "     sm2; pydir=~/softs/irac-pipe/python"
-ec "     cp $pydir/find_outliers*.py $pydir/combine_rmasks.py  $pydir/make_mosaics*.py ."
+ec "     cp \$pydir/find_outliers*.py \$pydir/combine_rmasks.py  \$pydir/make_mosaics*.py ."
 #ec "     python find_outliers.py" #ec "     python combine_rmasks.py" #ec "     python make_mosaics.py"
 ec "     python find_outliers.py; python combine_rmasks.py; python make_mosaics.py"
 exit     #### for testing new/updated scripts from 10.jun.2019

@@ -18,17 +18,19 @@
 #RAW=/n08data/Spitzer/COSMOS   # ==> /n09data/COSM
 #RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmctr    central part of COSMOS field
 #RAW=/n09data/Spitzer/COSMOS_Data   # ==> /n09data/cosmos155   r155* AORs (45) of COSMOS field
-RAW=/n08data/Spitzer/COSMOS     # ==> /n09data/COSnew      75 AORs
+#RAW=/n08data/Spitzer/COSMOS     # ==> /n09data/COSnew      75 AORs
 
 loc=$(pwd | cut -d\/ -f3)   # nominally name of Spitzer field 
+#RAW=/n08data/Spitzer/$loc    
 
 if [ $loc == 'mini' ]; then loc=COSMOS; fi  
 if [ $loc == 'COSnew' ]; then RAW=/n09data/Spitzer/COSMOS_New; fi 
-#RAW=/n08data/Spitzer/$loc    
+if [ $loc == 'COSMOS' ]; then RAW=/n09data/Spitzer/COSMOS; fi 
 
-echo "Raw data linked from $RAW"  #; exit
+echo "Raw data linked from $RAW"  
+sleep 10; #; exit
 
-if [ ! -d AllData ]; then mkdir AllData Data cal; fi
+if [ ! -d Data ]; then mkdir Data cal; fi
 
 # link all relevant data to AllData; later (manually) mv to Data the
 # AORs to preocess
@@ -37,7 +39,7 @@ echo "# 1) build raw data links to files into $RAW"
 
 if [ ! -e shortlist ]; then  # get all the data
 	echo ">> Build links to all raw data into AllData dir"
-	cd AllData; echo " --> $PWD"
+	cd Data; echo " --> $PWD"
 	for d in ${RAW}/r???*/ch?/bcd; do 
 		r=$(echo $d | cut -d\/ -f5-7); echo " $d  ==>  ./$r"
 		if [ ! -d $r ]; then mkdir -p $r; fi
@@ -56,8 +58,8 @@ else   # get only data in shortlist
 	done
 fi
 
-#exit 0
 echo " >> Built links for $(ls -d r????* | wc -l) AORs with $(ls -d r????*/ch? | wc -l) channel dirs"
+#exit 0
 cd ..; echo " --> $PWD"
 
 # link these to version on /n09data/Spitzer
@@ -66,7 +68,7 @@ echo "# 2) link calib and other auxiliary files into cal and cdf"
 # need to write into cal so link contents
 if [ ! -d cal/flat1.fits ]; then ln -sf /n08data/Spitzer_pipe/cal/* cal/; fi
 # do not need to write into cdf, so link directory
-ln -sf /home/moneti/sls/cdf .
+cp -r /home/moneti/softs/irac-pipe/cdf .
 
 echo "# setup for $(echo $RAW | cut -d\/ -f3-4) data reduction done ... enjoy!"
 exit 0
