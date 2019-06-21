@@ -30,6 +30,7 @@ else:
     print(">> Using available job list {} with {} jobs".format(JobListName.split('/')[-1], len(JobList)))
 
 Njobs = len(JobList)
+Nthr=$(($Nproc*2/3))
 
 # Read in Stars from WISE and cut on brigt stars, then write out a table to use for fitting.
 stars = ascii.read(StarTable,format="ipac")
@@ -38,10 +39,10 @@ BrightStars = stars[:][((stars['w1'] > BrightFlux) + (stars['w2'] > BrightFlux))
 ascii.write(BrightStars, BrightStarCat, format="ipac", overwrite=True)
 print(">> Built list {} of bright stars from WISE catal.".format(BrightStarCat.split('/')[-1]))
 
-print(">> Now launch find_stars_function with {} threads".format(Nproc))
+print(">> Now launch find_stars_function with {} threads".format(Nthr))
 
 # run using run_findstars(JobNo) function defined above
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nthr)
 results = pool.map(run_findstars, range(0, Njobs))
 
 print("- Done!")

@@ -34,6 +34,7 @@ if [ $# -eq 1 ]; then
 		keep="F"
 	fi
 fi
+#exit
 
 # check that raw data dir exists
 if [ ! -d $rdir ]; then
@@ -49,14 +50,15 @@ done
 
 if [[ $keep == "T" ]]; then
 	echo "## move command etc. files to $1"
-	mv *.sh *.py *.out *.qall *.err addkey* FIF.tbl $1
+	mv *.sh *.py *.out *.err addkey* FIF.tbl $1
 	mv medians $odir irac.log make_tiles* countFiles.dat  $1
-	rm -rf temp __pycache__ 
 else
 	echo "## delete command etc. files"
 	rm -f *.sh *.py *.out build.* *.err addkey* FIF.tbl cdf/log_*  # supermopex.py
-	rm -rf temp __pycache__ medians $odir countFiles.dat irac.log make_tiles*
+	rm -rf medians $odir countFiles.dat irac.log make_tiles*
 fi
+
+rm -rf temp __pycache__ *.qall 
 
 
 exit 0
