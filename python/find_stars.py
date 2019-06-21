@@ -30,7 +30,7 @@ else:
     print(">> Using available job list {} with {} jobs".format(JobListName.split('/')[-1], len(JobList)))
 
 Njobs = len(JobList)
-Nthr=$(($Nproc*2/3))
+Nthr  = int(Nproc*2/3)
 
 # Read in Stars from WISE and cut on brigt stars, then write out a table to use for fitting.
 stars = ascii.read(StarTable,format="ipac")

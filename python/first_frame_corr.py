@@ -24,7 +24,7 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 #genreate a joblist for parallelization
 JobList = make_joblist(log,AORlog)
 Njobs = len(JobList)
-Nthr=$(($Nproc*2/3))
+Nthr  = int(Nproc*2/3)
 
 print("Running first frame correction with " + str(Nthr) + " threads.")
 
