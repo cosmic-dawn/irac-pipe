@@ -24,10 +24,11 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 #genreate a joblist for parallelization
 JobList = make_joblist(log,AORlog)
 Njobs = len(JobList)
+Nthr  = int(Nproc*2/3)
 
-print("Checking stars with " + str(Nproc) + " threads.")
+print("Checking stars with " + str(Nthr) + " threads.")
 
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nthr)
 results = pool.map(run_checkstars, range(0,Njobs))
 
 print("Done!")

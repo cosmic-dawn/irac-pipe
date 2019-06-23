@@ -273,7 +273,7 @@ if [ ! -e $pars ]; then
 	PID=$(pwd | tr \/ \	 | awk '{print $NF}')
 	sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NODE@|$NODE|" \
 		-e "s|@NODE@|$NODE|"  -e "s|@ROOTDIR@|$WRK|"  -e "s|@PID@|$PID|"  \
-		$pydir/$pars > ./$pars
+		sed -e "s|@cluster@|candide|"  $pydir/$pars > ./$pars
 else 
 	ec "|### ATTN: Using local $pars ###"            #### | tee -a $pipelog
 	ec "|### $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" #### | tee -a $pipelog
@@ -478,8 +478,8 @@ if [ $1 == "find_stars" ] || [ $1 == "find" ] || [ $auto == "T" ]; then
 	module=find_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
-	wtime=$((1+$Nframes/$Nproc/60)):00:00
-	ec "# for $Nframes frames and $Nproc threads, set PBS walltime to $wtime"
+	wtime=$((1+$Nframes/$Nproc/120)):00:00
+	ec "# for $Nframes frames set PBS walltime to $wtime"
 	#echo "$Nframes $Nproc ==> $wtime"  ; exit
 
 	chk_prev first_frame_corr
@@ -534,8 +534,8 @@ if [ $1 == "subtract_stars" ] || [ $1 == "substars" ] || [ $auto == "T" ]; then
  	module=subtract_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
-	wtime=$((1+$Nframes/$Nproc/60)):00:00
-	ec "# for $Nframes frames and $Nproc threads, set PBS walltime to $wtime"
+	wtime=$((1+$Nframes/$Nproc/120)):00:00
+	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev merge_stars
 
 	write_module
@@ -586,8 +586,8 @@ if [[ $1 =~ "fix_astrometry" ]] || [ $1 == "astrom" ] || [ $auto == "T" ]; then
 	module=fix_astrometry
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.3 min/frame; about 1/3 that of find_stars
-	wtime=$((1+$Nframes/$Nproc/60/3)):00:00
-	ec "# for $Nframes frames and $Nproc threads, set PBS walltime to $wtime"
+	wtime=$((1+$Nframes/$Nproc/120/3)):00:00
+	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev make_medians
 
 	write_module
@@ -640,8 +640,8 @@ if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 	module=check_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.3 min/frame; about 1/3 that of find_stars
-	wtime=$((1+$Nframes/$Nproc/60/3)):00:00
-	ec "# for $Nframes frames and $Nproc threads, set PBS walltime to $wtime"
+	wtime=$((1+$Nframes/$Nproc/120/3)):00:00
+	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev subtract_medians
 
 	write_module

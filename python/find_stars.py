@@ -30,16 +30,17 @@ else:
     print(">> Using available job list {} with {} jobs".format(JobListName.split('/')[-1], len(JobList)))
 
 Njobs = len(JobList)
-Nthr  = int(Nproc*2/3)
+#Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
+Nthr  = 20
 
-# Read in Stars from WISE and cut on brigt stars, then write out a table to use for fitting.
-stars = ascii.read(StarTable,format="ipac")
+# Read in Stars from WISE and cut on bright stars, then write out a table to use for fitting.
+stars = ascii.read(StarTable,format="ipac")   # gaia
 BrightFlux = 10**((BrightStar-23.9)/-2.5)  #convert from mag to uJy
 BrightStars = stars[:][((stars['w1'] > BrightFlux) + (stars['w2'] > BrightFlux)).nonzero()] #get only bright stars
 ascii.write(BrightStars, BrightStarCat, format="ipac", overwrite=True)
 print(">> Built list {} of bright stars from WISE catal.".format(BrightStarCat.split('/')[-1]))
 
-print(">> Now launch find_stars_function with {} threads".format(Nthr))
+print(">> Now launch find_stars_function JobNo for each job, with {} threads".format(Nthr))
 
 # run using run_findstars(JobNo) function defined above
 pool = mp.Pool(processes=Nthr)

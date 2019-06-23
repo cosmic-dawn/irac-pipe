@@ -21,12 +21,16 @@ JobListName = OutputDIR + 'jobs.sub_stars'
 AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log, AORlog)
 ascii.write(JobList, JobListName, format="ipac",overwrite=True)    
+
 Njobs = len(JobList)
+#Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
+Nthr  = 20
+
 print("Built job list {} with {} jobs".format(JobListName, Njobs))
 
-print("- Launch subtract_stars_function with {} threads".format(Nproc))
+print("- Launch subtract_stars_function with {} threads".format(Nthr))
 
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nthr)
 results = pool.map(run_subtractstars, range(0,Njobs))
 
 print("Done!")

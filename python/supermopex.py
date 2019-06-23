@@ -29,7 +29,7 @@ AORoutput  = RootDIR + 'medians/'     # output dir for AOR median images
 
 Nproc      = @NPROC@                  # Number of Processes
 PIDname    = '@PID@'                  # PID name 
-cluster    = 'none'                   #cluster name for setting temp files.  Currently only supports candide or none
+cluster    = '@CLUSTER@'              # cluster name for setting temp files.  Currently only supports candide or none
 
 #--------------------- OTHER PARAMETERS ---------------------
 

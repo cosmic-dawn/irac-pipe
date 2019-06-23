@@ -25,12 +25,12 @@ from supermopex import *
 def scratch_dir_prefix(cluster,JobNo):
     if cluster == 'candide':
         locnode = os.uname().nodename.split('.')[0]  # name of process node
-        print(">> Processsing job {} on node {}".format(JobNo, locnode))
 
-        if (locnode == 'n04') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
+        if (locnode == 'n03') or (locnode == 'n04') or (locnode == 'n05') or (locnode == 'n06') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
             processTMPDIRprefix = '/' + locnode + 'data/'
         else:
             processTMPDIRprefix = '/scratch/'
+#        print(">> DEBUG: Processsing job {} on node {} with TMPDIRs in {:}".format(JobNo, locnode,  processTMPDIRprefix))
     else:
         processTMPDIRprefix = TMPDIR + '/'
     
@@ -219,8 +219,8 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         BrightStarTable = inputCat
         ascii.write(Table([BrightInFrame.ra.deg,BrightInFrame.dec.deg],names=['ra','dec']),BrightStarTable,format="ipac",overwrite=True)
         
-#        print(' - Frame {:3d}; {:}:'.format(fileNo +1, inputData.split('/')[-1]), end=' ')
-#        print(' find bright stars ...', end=' ')
+        # uncomment print statements to DEBUG
+        #print(' - Frame {:3d}; {:}: find bright stars ...'.format(fileNo +1, inputData.split('/')[-1]), end=' ')
         
         #do the bright stars for star subtraciton
         command = "apex_user_list_1frame.pl -n find_brightstars.nl  -p " + PRF[cryo][Ch-1] + " -u " + BrightStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
@@ -243,7 +243,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         FitStarTable = inputCatAstro
         ascii.write(Table([AstroInFrame.ra.deg,AstroInFrame.dec.deg],names=['ra','dec']),FitStarTable,format="ipac",overwrite=True)
 
-#        print('astrometry stars')
+        #print(' find astrometry stars')
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n find_astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -316,7 +316,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         #write out catalog for Astrometry stars
         FitStarTable = inputCatAstro
 
-        print('Find astrometry stars in frame  {:3d}; {:}'.format(fileNo +1, inputData.split('/')[-1]))
+###        print('Find astrometry stars in frame  {:3d}; {:}'.format(fileNo +1, inputData.split('/')[-1]))
         #now do the stars for astrometry
         command = "apex_user_list_1frame.pl -n find_astrostars.nl -m " + PRFmap[cryo][Ch-1] + " -u " + FitStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
@@ -778,7 +778,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
 
-    print('Processing AOR {} Chan {} with {} frames'.format(AOR, Ch, Nframes))
+    print('## Begin job {} : AOR {} Chan {} with {} frames'.format(JobNo, AOR, Ch, Nframes))
 
     for frame in range(0,Nframes):
         BCDfilename = files[frame] 
@@ -881,6 +881,9 @@ def subtract_median(JobNo,JobList,log,AstroFix):
         rmsHDU.writeto(ScaledNoiseFile,overwrite='True') #write output scaled noise
         #print("DEBUG: wrote scaled noise {:} ".format(ScaledNoiseFile))
         #print("DEBUG: =======  Finished with frame {}  ========".format(frame))
+
+    print('## Finished job {}'.format(JobNo))
+
 
 def make_median_image(JobNo,JobList,log,AORlog):
     
