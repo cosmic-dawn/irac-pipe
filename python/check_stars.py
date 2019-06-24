@@ -25,7 +25,7 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log,AORlog)
 Njobs = len(JobList)
 #Nthr  = int(Nproc*2/3)
-Nthr  = 20
+Nthr  = 24
 print("Checking stars with " + str(Nthr) + " threads.")
 
 pool = mp.Pool(processes=Nthr)

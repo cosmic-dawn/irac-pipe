@@ -1,8 +1,8 @@
 #-----------------------------------------------------------------------------
 # supermopex.py @INFO@
 #
-# This is the template supermopex.py. Items like @XXXX@ are replaced are
-# replaced by the pipeline script with local values, and the result is written
+# This is the template supermopex.py. Items like @XXXX@ are replaced 
+# by the pipeline script with local values, and the result is written
 # into the local working directory (RootDIR) for use by the python scripts.
 #
 # This is, in practice, a kind of parameter file; it is read by the python
@@ -28,6 +28,7 @@ TMPDIR     = RootDIR + 'temp/'        # directory for temporary files
 AORoutput  = RootDIR + 'medians/'     # output dir for AOR median images
 
 Nproc      = @NPROC@                  # Number of Processes
+Nthred     = @NTHRED@                 # Number of threads for python scripts to use
 PIDname    = '@PID@'                  # PID name 
 cluster    = '@CLUSTER@'              # cluster name for setting temp files.  Currently only supports candide or none
 

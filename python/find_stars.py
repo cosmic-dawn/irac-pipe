@@ -31,7 +31,7 @@ else:
 
 Njobs = len(JobList)
 #Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
-Nthr  = 20
+Nthr  = 24
 
 # Read in Stars from WISE and cut on bright stars, then write out a table to use for fitting.
 stars = ascii.read(StarTable,format="ipac")   # gaia

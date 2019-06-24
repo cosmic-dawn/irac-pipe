@@ -24,14 +24,8 @@ wt() { echo "$(date "+%s.%N") $bdate" | \
 module () {	 eval $(/usr/bin/modulecmd bash $*); }
 module purge ; module load intelpython/3-2019.4   
 
-use_rel=@USE_REL@
-if [ $use_rel == "T" ] || [ $use_rel == "True" ]; then
-	bindir=/home/moneti/softs/irac-pipe/bin
-	pydir=/home/moneti/softs/irac-pipe/python
-else
-	bindir=/home/moneti/sls
-	pydir=/home/moneti/sls
-fi
+bindir=/home/moneti/softs/irac-pipe/bin
+pydir=/home/moneti/softs/irac-pipe/python
 
 # check if dry mode
 if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi

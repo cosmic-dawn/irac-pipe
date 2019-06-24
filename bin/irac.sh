@@ -37,11 +37,12 @@
 # v2.17: improved Irsa queries; find_stars walltime now dynamic    (07.jun.19)
 # v2.18: dynamic walltime for other modules; preps for new modules (11.jun.19)
 # v2.19: switch to intelpython/3-2019.4 and other minor changes    (19.jun.19)
+# v2.20: rm use_rel variable, add Nthred=Nproc/2 for py scripts    (24.jun.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.19 (19.june.19)"
+vers="2.20 (24.june.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -87,11 +88,11 @@ if [ -z ${WRK+x} ]; then
 	exit 20
 fi
 
-if [ -z ${use_rel+x} ]; then 
-	echo "###  ATTN: setting use_rel=T: use release scripts; "
-	echo "###  export use_rel=F to use development scripts" 
-	use_rel=T
-fi
+#if [ -z ${use_rel+x} ]; then 
+#	echo "###  ATTN: setting use_rel=T: use release scripts; "
+#	echo "###  export use_rel=F to use development scripts" 
+#	use_rel=T
+#fi
 
 if [ ! -e $WRK/supermopex.py ]; then 
 	NODE=$(echo $WRK | sed 's|/automnt||' | cut -c2-4)	 # use local node by default
@@ -105,9 +106,11 @@ get_nproc() {
 
 if [[ $(hostname) =~ "candid" ]]; then
 	if [ -e supermopex.py ]; then 
-		Nproc=$(grep  '^Nproc' supermopex.py | tr -s ' ' | cut -d\  -f3)
+		Nproc=$(grep  '^Nproc'  supermopex.py | tr -s ' ' | cut -d\  -f3)
+		Nthred=$(grep '^Nthred' supermopex.py | tr -s ' ' | cut -d\  -f3)
 	else
 		Nproc=$(($(get_nproc) - 3))
+		Nthred=$(($(get_nproc)/2))
 	fi
 else
 	echo "####"
@@ -115,7 +118,8 @@ else
 	echo "####  ATTN: Should be running pipeline from login node!!"
 	echo "####----------------------------------------------------"
 	echo "####"
-	Nproc=0    # to avoid giving unbound variable error
+	Nproc=0    # to avoid giving unbound variable error 
+	Nthred=0   # idem
 	if [ $dry == "F" ]; then exit 1; fi 
 fi
 
@@ -171,7 +175,7 @@ chk_prev() {
 write_module() {  # write local verions of py and sh modules
 	info="for $WRK, built $(date +%d.%h.%y\ %T)"
 	sed -e "s|@NPROC@|$Nproc|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
-		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|" -e "s|USE_REL|$use_rel|" \
+		-e "s|@INFO@|$info|"   -e "s|@PID@|$PID|" -e "s|@NTHR@|$Nthred|" \
 		-e "s|@WTIME@|$wtime|"   $bindir/$module.sh > ./$module.sh
 	chmod 755 $module.sh
 	ec "# Wrote $module.sh"
@@ -240,13 +244,8 @@ cd $WRK
 pars=supermopex.py
 pipelog=$WRK/irac.log
 
-if [ $use_rel == "T" ] || [ $use_rel == "True" ]; then
-	bindir=/home/moneti/softs/irac-pipe/bin
-	pydir=/home/moneti/softs/irac-pipe/python
-else
-	bindir=/home/moneti/sls
-	pydir=/home/moneti/sls
-fi
+bindir=/home/moneti/softs/irac-pipe/bin
+pydir=/home/moneti/softs/irac-pipe/python
 
 ec "#==================================================#"
 ec "#                                                  #"
@@ -257,9 +256,6 @@ ec "|-------  Check parameters  ---------------------------"
 ec "| Machine info and more:"
 ec "| - Work node:          $NODE"
 ec "| - Work dir (\$WRK):    $WRK"
-if [ $use_rel != "T" ]; then
-	ec "|### ATTN: using development scripts"
-fi
 ec "| - Shell scripts in:   $bindir/"
 ec "| - Python scripts in:  $pydir/"
 ec "|------------------------------------------------------"
@@ -271,9 +267,9 @@ if [ ! -e $pars ]; then
 	ec "|### template is $pydir/$pars"
 	info="built for $WRK on $(date +%d.%h.%y\ %T)"
 	PID=$(pwd | tr \/ \	 | awk '{print $NF}')
-	sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NODE@|$NODE|" \
+	sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NTHRED@|$Nthred|" \
 		-e "s|@NODE@|$NODE|"  -e "s|@ROOTDIR@|$WRK|"  -e "s|@PID@|$PID|"  \
-		sed -e "s|@cluster@|candide|"  $pydir/$pars > ./$pars
+		-e "s|@CLUSTER@|candide|"  $pydir/$pars > ./$pars
 else 
 	ec "|### ATTN: Using local $pars ###"            #### | tee -a $pipelog
 	ec "|### $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" #### | tee -a $pipelog
@@ -300,7 +296,9 @@ ec "| - RawDataDir:        \$RootDIR/$rdir/"
 ec "| - OutputDIR:         \$RootDIR/$odir/"
 ec "| - LogTable:          \$RootDIR/${odir}/$ltab"
 ec "| - TempDir:           \$RootDIR/$tdir/"
+ec "| - Cluster is:        $(grep 'cluster ' $pars | cut -d\' -f2 )"
 ec "| - Nproc requested:   $(grep 'Nproc  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
+ec "| - Nthread requested: $(grep 'Nthred  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
 
 if [ -d $(echo $rdir | tr -d \/) ]; then
 	NAORs=$(ls -d $rdir/r???* 2> /dev/null| wc -l)
@@ -478,7 +476,7 @@ if [ $1 == "find_stars" ] || [ $1 == "find" ] || [ $auto == "T" ]; then
 	module=find_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
-	wtime=$((1+$Nframes/$Nproc/120)):00:00
+	wtime=$((1+$Nframes/4500)):00:00
 	ec "# for $Nframes frames set PBS walltime to $wtime"
 	#echo "$Nframes $Nproc ==> $wtime"  ; exit
 
@@ -534,7 +532,7 @@ if [ $1 == "subtract_stars" ] || [ $1 == "substars" ] || [ $auto == "T" ]; then
  	module=subtract_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
-	wtime=$((1+$Nframes/$Nproc/120)):00:00
+	wtime=$((1+$Nframes/4500)):00:00
 	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev merge_stars
 
@@ -586,7 +584,7 @@ if [[ $1 =~ "fix_astrometry" ]] || [ $1 == "astrom" ] || [ $auto == "T" ]; then
 	module=fix_astrometry
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.3 min/frame; about 1/3 that of find_stars
-	wtime=$((1+$Nframes/$Nproc/120/3)):00:00
+	wtime=$((1+$Nframes/4500/2)):00:00
 	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev make_medians
 
@@ -640,7 +638,7 @@ if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 	module=check_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.3 min/frame; about 1/3 that of find_stars
-	wtime=$((1+$Nframes/$Nproc/120/3)):00:00
+	wtime=$((1+$Nframes/4500/2)):00:00
 	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev subtract_medians
 

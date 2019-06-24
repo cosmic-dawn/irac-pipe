@@ -24,7 +24,7 @@ ascii.write(JobList, JobListName, format="ipac",overwrite=True)
 
 Njobs = len(JobList)
 #Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
-Nthr  = 20
+Nthr  = 24
 
 print("Built job list {} with {} jobs".format(JobListName, Njobs))
 

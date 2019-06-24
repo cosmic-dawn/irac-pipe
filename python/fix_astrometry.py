@@ -43,7 +43,7 @@ StarData['pmdec_error'].fill_value=0.0
 StarData['parallax'].fill_value=1e-8
 
 #Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
-Nthr  = 20
+Nthr  = 24
 
 print("Starting fix_astrometry on {} jobs with {} threads.".format(Nrows, Nthr))
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -S /bin/bash
-#PBS -N substars_@PID@
+#PBS -N substrs_@PID@
 #PBS -o subtract_stars.out
 #PBS -j oe
 #PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=@WTIME@
