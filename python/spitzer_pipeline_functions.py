@@ -30,7 +30,7 @@ def scratch_dir_prefix(cluster,JobNo):
             processTMPDIRprefix = '/' + locnode + 'data/'
         else:
             processTMPDIRprefix = '/scratch/'
-#        print(">> DEBUG: Processsing job {} on node {} with TMPDIRs in {:}".format(JobNo, locnode,  processTMPDIRprefix))
+#        print(">> DEBUG: Processsing job {:} on node {:} with TMPDIRs in {:}".format(JobNo, locnode,  processTMPDIRprefix))
     else:
         processTMPDIRprefix = TMPDIR + '/'
     
@@ -159,7 +159,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     AstrometryCoords=SkyCoord(AstrometryStars['ra'], AstrometryStars['dec'],pm_ra_cosdec=AstrometryStars['pmra'].filled(),pm_dec=AstrometryStars['pmdec'].filled(),distance=AstrometryStars['parallax'].filled(),obstime=GaiaEpoch,frame='icrs', unit="deg")
 
     Nframes = len(files)    
-    print('## Begin job    {:4d}: AOR {:8d} / ch {}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
+    print('## Begin find_stars job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
     
     for fileNo in range(0,Nframes):
         MJD      = MJDs[fileNo]
@@ -256,7 +256,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
         
-    print('## Finished job {:4d}: AOR {:8d} / ch {}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
 
 
 #routine to find stars in order to check the astrometry solution
@@ -275,7 +275,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
     
     Nframes = len(files)
 
-    print('## Check stars job {:4d}: AOR {:} Ch {:} with {:} frames'.format(JobNo, AOR, Ch, Nframes))
+    print('## Begin check_stars job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
  
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -329,7 +329,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
-    print('## Finished job    {:4d}'.format(JobNo))
+    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
     
 def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     
@@ -596,7 +596,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
     
     Nframes = len(files)
     
-    print('## Begin job    {:4d}: AOR {:8d} / ch {}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
+    print('## Begin subtr_stars job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
 
     for fileNo in range(0,Nframes):
         MJD = MJDs[fileNo]
@@ -740,7 +740,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
             shutil.move(residualImage,SubtractedFile)
             shutil.copy(MaskFile,SubtractedMask)
 
-        print(' - Wrote star_subtracted frame {:3d}: {}'.format(fileNo +1, SubtractedFile.split('/')[-1]))
+      ##  print(' - Wrote star_subtracted frame {:3d}: {:}'.format(fileNo +1, SubtractedFile.split('/')[-1]))
 
         # clean up
         #wait for file to be in place
@@ -752,7 +752,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
-    print('## Finished job {:4d}: AOR {:8d} / ch {}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
 
 def subtract_median(JobNo,JobList,log,AstroFix):
     
@@ -778,7 +778,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
 
-    print('## Begin job {} : AOR {} Chan {} with {} frames'.format(JobNo, AOR, Ch, Nframes))
+    print('## Begin subtr_median job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
 
     for frame in range(0,Nframes):
         BCDfilename = files[frame] 
@@ -873,16 +873,16 @@ def subtract_median(JobNo,JobList,log,AstroFix):
         goodRMS = ma.MaskedArray.compressed(rmsImage)  #kudge to get rid of lower case nans
         var = ma.average(np.power(goodRMS,2)) #calcualte the average variance
         scaleLevel = var-rms*rms #determine the pedistle level
-        #print("DEBUG: Pedestal level: {}".format(scaleLevel))
+        #print("DEBUG: Pedestal level: {:}".format(scaleLevel))
 
         rmsHDU[0].data = np.sqrt(rmsHDU[0].data*rmsHDU[0].data-scaleLevel) #subtract the pedistle
         rmsHDU[0].header['CRVAL1'] = goodRA  #+=dRA #fix the astrometry
         rmsHDU[0].header['CRVAL2'] = goodDE  #+=dDEC
         rmsHDU.writeto(ScaledNoiseFile,overwrite='True') #write output scaled noise
         #print("DEBUG: wrote scaled noise {:} ".format(ScaledNoiseFile))
-        #print("DEBUG: =======  Finished with frame {}  ========".format(frame))
+        #print("DEBUG: =======  Finished with frame {:}  ========".format(frame))
 
-    print('## Finished job {}'.format(JobNo))
+    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
 
 
 def make_median_image(JobNo,JobList,log,AORlog):
@@ -925,14 +925,14 @@ def make_median_image(JobNo,JobList,log,AORlog):
     NrepFrames = int(Nframes/Nrepeats) #Calculate the number of repeate frames
 
     if HDR == 'True':
-        print('## AOR {} in HDR mode; has {} observations at each position,'.format(AOR, Nrepeats), end=' ')
-        print(' . Exposure times are: {}'.format(Exptimes))
+        print('## AOR {:} in HDR mode; has {:} observations at each position,'.format(AOR, Nrepeats), end=' ')
+        print(' . Exposure times are: {:}'.format(Exptimes))
     else:
-        print('## AOR {} in Standard mode; has {} observations at each position,'.format(AOR, Nrepeats), end=' ')
+        print('## AOR {:} in Standard mode; has {:} observations at each position,'.format(AOR, Nrepeats), end=' ')
         if Nrepeats > 1:
-            print('has {} frames, {} per repeat.'.format(Nframes, NrepFrames))
+            print('has {:} frames, {:} per repeat.'.format(Nframes, NrepFrames))
         else:
-            print('has {} frames.'.format(Nframes))
+            print('has {:} frames.'.format(Nframes))
 
     #lets do some error checking
     if (Nframes != NrepFrames*Nrepeats):
@@ -941,7 +941,7 @@ def make_median_image(JobNo,JobList,log,AORlog):
         print('ERROR: Total number of frames, number of repeats, and repeats per frame disagree!')
 
 #    print('## Read ' + str(Nframes) + ' Images from AOR ' + str(AOR) + ' Channel ' + str(Ch))
-    print('## Read {} Images for ch {} '.format(Nframes, Ch))
+    print('## Read {:} Images for ch {:} '.format(Nframes, Ch))
 
     for frame in range(0,Nframes):
         BCDfilename = files[frame]
@@ -1093,7 +1093,7 @@ def make_median_image(JobNo,JobList,log,AORlog):
         #write the output file
         outputMedi = AORoutput + 'median.' + str(AOR) + '.' + repeats[repIDX] + '.ch.' + str(Ch) + '.fits'
         fits.writeto(outputMedi,output_data,overwrite='True')
-        print('==> Wrote {} and {} '.format(outputAve, outputMedi.split('/')[-1]))
+        print('==> Wrote {:} and {:} '.format(outputAve, outputMedi.split('/')[-1]))
 
 def run_mosaic_geometry(JobNo,JobList):
     
@@ -1142,12 +1142,12 @@ def find_outlier_tile(JobNo,JobList):
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
 
     if os.path.dirname(processTMPDIR):
-        print(">> Clean temp dir {} created".format(processTMPDIR))
+        print(">> Clean temp dir {:} created".format(processTMPDIR))
     else:
         print("## ERROR: could not create temp dir .... quitting")
         sys.exit(3)
     
-    print(">> Using temp dir {}".format(processTMPDIR))
+    print(">> Using temp dir {:}".format(processTMPDIR))
 
     #input lists
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
@@ -1156,7 +1156,7 @@ def find_outlier_tile(JobNo,JobList):
     
     #Run Mosaic
     logfile = 'make_tile_'+str(JobNo)+'.log'
-    print(">> logfile is {}".format(logfile))
+    print(">> logfile is {:}".format(logfile))
     cmd = 'mosaic.pl -n ' + IRACOutlierConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
 #    cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR
     print(">> command line is:")
@@ -1165,7 +1165,7 @@ def find_outlier_tile(JobNo,JobList):
     
     #move the files
     basename = OutputDIR + PIDname + '.irac.tile.' + str(Tile) + '.'
-    print(">> Products root name: {}".format(Tile))
+    print(">> Products root name: {:}".format(Tile))
     
     mosaic = basename + str(Ch) + '.mosaic.fits'
     try:
@@ -1209,7 +1209,7 @@ def find_outlier_tile(JobNo,JobList):
     except:
         print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic.fits not found")
         print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead")
-        os.system("cp -v {}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {}".format(processTMPDIR, medmosaic))
+        os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {:}".format(processTMPDIR, medmosaic))
         # shutil.copy doesn't take wildcards
         #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts', medmosaic)
 
@@ -1218,7 +1218,7 @@ def find_outlier_tile(JobNo,JobList):
     except:
         print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic_unc.fits not found")
         print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
-        os.system("cp -v {}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {}".format(processTMPDIR, medmosaicunc))
+        os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {:}".format(processTMPDIR, medmosaicunc))
         #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts',medmosaicunc)
     
     # clean up:  done in shell script if all products found
@@ -1269,12 +1269,12 @@ def make_mosaic(Ch):
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
     
     if os.path.dirname(processTMPDIR):
-        print(">> Clean temp dir {} created".format(processTMPDIR))
+        print(">> Clean temp dir {:} created".format(processTMPDIR))
     else:
         print("## ERROR: could not create temp dir .... quitting")
         sys.exit(3)
 
-    print(">> Using temp dir {}".format(processTMPDIR))
+    print(">> Using temp dir {:}".format(processTMPDIR))
 
     #input lists
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
@@ -1287,7 +1287,7 @@ def make_mosaic(Ch):
 
     #Run Mosaic
     logfile = 'make_mosaic_'+str(Ch)+'.log'
-    print(">> logfile is {}".format(logfile))
+    print(">> logfile is {:}".format(logfile))
     cmd = 'mosaic.pl -n ' + IRACMosaicConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -R ' + rmasklist + ' -F ' + iracFIF + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
     print(">> command line is:")
     print("   "+cmd)
@@ -1295,7 +1295,7 @@ def make_mosaic(Ch):
     
     #move the files
     basename = OutputDIR + PIDname + '.irac.'
-    print(">> Products root name: {}".format(Ch))
+    print(">> Products root name: {:}".format(Ch))
     
     mosaic = basename + str(Ch) + '.mosaic.fits'
     try:
@@ -1330,7 +1330,7 @@ def make_mosaic(Ch):
     except:
         print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic.fits not found")
         print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead")
-        os.system("cp -v {}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {}".format(processTMPDIR, medmosaic))
+        os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {:}".format(processTMPDIR, medmosaic))
         # shutil.copy doesn't take wildcards
         #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts', medmosaic)
     
@@ -1339,7 +1339,7 @@ def make_mosaic(Ch):
     except:
         print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic_unc.fits not found")
         print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
-        os.system("cp -v {}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {}".format(processTMPDIR, medmosaicunc))
+        os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {:}".format(processTMPDIR, medmosaicunc))
         #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts',medmosaicunc)
     
     # clean up:  done in shell script if all products found
