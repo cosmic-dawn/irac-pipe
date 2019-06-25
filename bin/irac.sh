@@ -476,7 +476,7 @@ if [ $1 == "find_stars" ] || [ $1 == "find" ] || [ $auto == "T" ]; then
 	module=find_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
-	wtime=$((1+$Nframes/4500)):00:00
+	wtime=$((2+$Nframes/4500)):00:00
 	ec "# for $Nframes frames set PBS walltime to $wtime"
 	#echo "$Nframes $Nproc ==> $wtime"  ; exit
 
@@ -532,7 +532,7 @@ if [ $1 == "subtract_stars" ] || [ $1 == "substars" ] || [ $auto == "T" ]; then
  	module=subtract_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
-	wtime=$((1+$Nframes/4500)):00:00
+	wtime=$((2+$Nframes/4500)):00:00
 	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev merge_stars
 
@@ -584,7 +584,7 @@ if [[ $1 =~ "fix_astrometry" ]] || [ $1 == "astrom" ] || [ $auto == "T" ]; then
 	module=fix_astrometry
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.3 min/frame; about 1/3 that of find_stars
-	wtime=$((1+$Nframes/4500/2)):00:00
+	wtime=$((2+$Nframes/4500)):00:00
 	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev make_medians
 
@@ -638,7 +638,7 @@ if [[ $1 =~ "check_stars" ]] || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 	module=check_stars
 	bdate=$(date "+%s.%N")       # start time/date
 	# estimate 0.3 min/frame; about 1/3 that of find_stars
-	wtime=$((1+$Nframes/4500/2)):00:00
+	wtime=$((2+$Nframes/4500)):00:00
 	ec "# for $Nframes frames set PBS walltime to $wtime"
 	chk_prev subtract_medians
 
