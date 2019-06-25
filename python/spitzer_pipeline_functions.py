@@ -256,7 +256,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
         
-    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
 
 
 #routine to find stars in order to check the astrometry solution
@@ -329,7 +329,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
-    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
     
 def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     
@@ -752,7 +752,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
-    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
 
 def subtract_median(JobNo,JobList,log,AstroFix):
     
@@ -882,7 +882,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
         #print("DEBUG: wrote scaled noise {:} ".format(ScaledNoiseFile))
         #print("DEBUG: =======  Finished with frame {:}  ========".format(frame))
 
-    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
 
 
 def make_median_image(JobNo,JobList,log,AORlog):

@@ -24,18 +24,30 @@ def first_frame_correct(JobNo):
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
     
-    print('First Frame Correction: job {:4d} of {}, AOR {} Ch {}'.format(JobNo, Njobs, AOR, Ch)) #,end="\r")
+    #print('First Frame Correction: job {:4d} of {}, AOR {} Ch {}'.format(JobNo, Njobs, AOR, Ch)) #,end="\r")
+    print('## Begin ffcorr job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
+
+    MJD = MJDs[0]
+    #Check if we are in the Cryo mission
+    if (MJD > WarmMJD):
+        cryo = 0
+        print(">> Warm mission: apply correction")
+    else:
+        cryo = 1
+        print(">> Cryo mission: nothing to correct")
     
     for fileNo in range(0,Nframes):
     
-        MJD = MJDs[fileNo]
+#       MJD = MJDs[fileNo]
         BCDfilename = files[fileNo]
         
-        #Check if we are in the Cryo mission
-        if (MJD > WarmMJD):
-            cryo = 0
-        else:
-            cryo = 1
+#        #Check if we are in the Cryo mission
+#        if (MJD > WarmMJD):
+#            cryo = 0
+#            print("  Warm mission: apply correction")
+#        else:
+#            cryo = 1
+#            print("  Cryo mission: nothing to correct")
         
         #setup  some file names
         #Setup file suffixes re replace
@@ -55,7 +67,7 @@ def first_frame_correct(JobNo):
 
         #Only do correction for warm mission given the data we have in hand
         if cryo:
-            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' No Correction, just copying ' + ImageFile) #,end='\r')
+#            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' No Correction, just copying ' + ImageFile) #,end='\r')
             shutil.copy(ImageFile,FFcorFile)  #just copy over the file
         else:
             #read the image
@@ -81,8 +93,10 @@ def first_frame_correct(JobNo):
             #do the correction
             imageHDU[0].data -= corrframe
             imageHDU.writeto(FFcorFile,overwrite='True')  #write out the final star subtracted image
-            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + FFcorFile) #,end="\r")
+#            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + FFcorFile) #,end="\r")
 
+    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
+    
 
 #parse the arguments
 usagestring ='%prog Job_Number'
@@ -115,7 +129,7 @@ if (JobNo > Njobs):
     die("Requested job number greater than number of jobs available " + str(Njobs) + "!");
 
 #read in the flat data
-print('Reading in flat data')
+print('Reading in flat data ', end='\r')
 flatData = np.zeros([2,4,256,256],dtype=np.double) #delay data
 #just doing ch1/2 for warm mission right now, leaving in option for others if/when those corrections become available
 for cryo in range(0,1):
@@ -124,7 +138,7 @@ for cryo in range(0,1):
         flatData[cryo,Ch-1]=flatHDU[0].data
 
 #read in the delay files
-print('Reading in Frame Delay Data')
+print('... and Frame Delay Data')
 
 #Read the delay files for the first frame correction
 delayInfo = np.recfromtxt(FrameDelayFile,
