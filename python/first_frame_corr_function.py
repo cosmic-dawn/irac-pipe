@@ -95,7 +95,7 @@ def first_frame_correct(JobNo):
             imageHDU.writeto(FFcorFile,overwrite='True')  #write out the final star subtracted image
 #            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + FFcorFile) #,end="\r")
 
-    print('## Finished job {:4d}: AOR {:8d} / ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
     
 
 #parse the arguments
