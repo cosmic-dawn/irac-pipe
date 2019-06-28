@@ -256,7 +256,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
         
-    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
 
 #routine to find stars in order to check the astrometry solution
@@ -329,7 +329,7 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
-    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
     
 def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     
@@ -752,7 +752,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         cleanupCMD = 'rm -rf ' + processTMPDIR
         os.system(cleanupCMD)
 
-    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
 def subtract_median(JobNo,JobList,log,AstroFix):
     
@@ -882,29 +882,35 @@ def subtract_median(JobNo,JobList,log,AstroFix):
         #print("DEBUG: wrote scaled noise {:} ".format(ScaledNoiseFile))
         #print("DEBUG: =======  Finished with frame {:}  ========".format(frame))
 
-    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
 
-def make_median_image(JobNo,JobList,log,AORlog):
+def make_median_image(JobNo, JobList, log, AORlog, debug):
     
+    if (debug == 1):
+        print(" ## ACTIVATED DEBUG MODE ##")
+
     AOR = JobList['AOR'][JobNo]
-    Ch = JobList['Channel'][JobNo]
+    Ch  = JobList['Channel'][JobNo]
     HDR = JobList['HDR'][JobNo]
-    
-    
+
     #make the list of files for this AOR and Channel
     if HDR == 'True':
         #in HDR mode grab all files
         LogIDX = ((log['Channel']==Ch) & (log['AOR']==AOR)).nonzero()  # get the indexes of files we should use
+        hdrm = "mode HDR"
     else:
         #in standar mode just drop first few exposures that have shorter exposure time
         ExptimeNormal = np.max(log['ExpTime'][((log['Channel']==Ch) & (log['AOR']==AOR) & (log['HDR']=='False')).nonzero()])
         LogIDX = ((log['Channel']==Ch) & (log['AOR']==AOR) & (log['ExpTime']==ExptimeNormal)).nonzero()  # get the indexes of files we should use with normal exposure times
+        hdrm = "mode STD"
     
     files = log['Filename'][LogIDX]
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
     
+    print('## Begin make_medians job {:4d} - AOR {:8d} Ch {:}, {:3d} frames, {:}'.format(JobNo, AOR, Ch, Nframes, hdrm))
+
     #read in the files
     imageData  = ma.zeros([Nframes,256,256],dtype=np.double) #data images
     ivarImages = np.zeros([Nframes,256,256],dtype=np.double) #inverse variance images
@@ -917,31 +923,30 @@ def make_median_image(JobNo,JobList,log,AORlog):
         Exptimes = list(set(log['ExpTime'][LogIDX]))
         Nrepeats = len(Exptimes)
     else:
-        #In normal mode just find the frames with long frame delays, repeates typically have ~2s delays.
+        #In normal mode just find the frames with long frame delays, repeats typically have ~2s delays.
         LongDelays =  np.where(log['FrameDelay'][LogIDX] > 6)  #Find the long delays
         NumLongDelay = len(log['FrameDelay'][LongDelays]) #Count them
         Nrepeats = int(Nframes/NumLongDelay) #calculate the number of repeats
 
-    NrepFrames = int(Nframes/Nrepeats) #Calculate the number of repeate frames
+    NrepFrames = int(Nframes/Nrepeats) #Calculate the number of repeated frames
 
     if HDR == 'True':
-        print('## AOR {:} in HDR mode; has {:} observations at each position,'.format(AOR, Nrepeats), end=' ')
-        print(' . Exposure times are: {:}'.format(Exptimes))
+        print('## AOR {:} Ch {:} in HDR mode; has {:} obs at each position'.format(AOR, Ch, Nrepeats))
+        if debug == 1: print("   exp times are: {:}".format(Exptimes))
     else:
-        print('## AOR {:} in Standard mode; has {:} observations at each position,'.format(AOR, Nrepeats), end=' ')
+        print('## AOR {:} Ch {:} in STD mode; has {:} obs at each position,'.format(AOR, Ch, Nrepeats), end=' ')
         if Nrepeats > 1:
             print('has {:} frames, {:} per repeat.'.format(Nframes, NrepFrames))
         else:
             print('has {:} frames.'.format(Nframes))
 
     #lets do some error checking
-    if (Nframes != NrepFrames*Nrepeats):
-#        print('Check number of total frames ... correct!')   ##DEBUG
-#    else:
-        print('ERROR: Total number of frames, number of repeats, and repeats per frame disagree!')
+    if (Nframes == NrepFrames*Nrepeats):
+        if (debug == 1): print('DEBUG: Found expected number of frames .... continue')
+    else:
+        print('WARNING: Total number of frames {:}, number of repeats {:}, and repeats per frame {:} disagree!'.format(Nframes, NrepFrames, Nrepeats))
+        print('         Found {:} frames, expected {:} '.format(Nframes, NrepFrames*Nrepeats))
 
-#    print('## Read ' + str(Nframes) + ' Images from AOR ' + str(AOR) + ' Channel ' + str(Ch))
-    print('## Read {:} Images for ch {:} '.format(Nframes, Ch))
 
     for frame in range(0,Nframes):
         BCDfilename = files[frame]
@@ -1094,6 +1099,8 @@ def make_median_image(JobNo,JobList,log,AORlog):
         outputMedi = AORoutput + 'median.' + str(AOR) + '.' + repeats[repIDX] + '.ch.' + str(Ch) + '.fits'
         fits.writeto(outputMedi,output_data,overwrite='True')
         print('==> Wrote {:} and {:} '.format(outputAve, outputMedi.split('/')[-1]))
+
+    print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
 def run_mosaic_geometry(JobNo,JobList):
     

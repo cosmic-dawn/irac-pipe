@@ -4,7 +4,7 @@ import numpy as np
 from astropy.io import ascii
 from supermopex import *
 from spitzer_pipeline_functions import *
-import os
+import sys,os
 import multiprocessing as mp
 
 def run_makemedians(JobNo):
@@ -25,9 +25,10 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log,AORlog)
 Njobs = len(JobList)
 
-print("- Launch making_medians_function with {} threads.".format(Nproc))
+# Nthred from supermopex
+print("- Launch make_medians_function for {:} jobs with {:} threads.".format(Njobs, Nthred))
 
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nthred)
 results = pool.map(run_makemedians, range(0,Njobs))
 
 print("- Done!")

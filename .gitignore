@@ -1,8 +1,0 @@
-# Files to ignore
-
-.git*
-*.pyc
-*.*~
-.*DS_Store
-commands.sh
-fixlog.sh

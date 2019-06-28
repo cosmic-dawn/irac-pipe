@@ -23,16 +23,18 @@ if len(args) < 1:
 #read job number
 JobNo=int(args[0])
 
+# check if debug mode
+if len(args) > 1:
+    debug = 1
+else:
+    debug = 0
+
 # Read in the log file and extract the IRAC info
 rawlog = ascii.read(LogTable,format="ipac")
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 #Get the size of the array
 Nrows = log['Filename'].size
-
-#make output directory
-cmd = 'mkdir -p ' + AORoutput
-os.system(cmd)
 
 #read in the AOR properties log
 AORlog = ascii.read(AORinfoTable,format="ipac")
@@ -44,4 +46,9 @@ Njobs = len(JobList)
 if (JobNo > Njobs):
     die("Requested job number greater than number of jobs available " + str(Njobs) + "!");
 
-make_median_image(JobNo,JobList=JobList,log=log,AORlog=AORlog)
+#make output directory
+cmd = 'mkdir -p ' + AORoutput
+os.system(cmd)
+
+make_median_image(JobNo, JobList=JobList, log=log, AORlog=AORlog, debug=debug)
+
