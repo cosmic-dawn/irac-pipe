@@ -30,6 +30,6 @@ Njobs = len(JobList)
 if (JobNo > Njobs):
     die("Requested job number greater than number of jobs available " + str(Njobs) + "!");
 
-find_outlier_tile(JobNo,JobList=JobList)
+find_outlier_tile(JobNo, JobList=JobList, debug=0)
 
 

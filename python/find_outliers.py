@@ -15,9 +15,9 @@ def run_find_outliers(JobNo):
 JobList = ascii.read(TileListFile,format="ipac")
 Njobs = len(JobList)
 
-print("Making mosaics with " + str(Nproc) + " threads.")
+print("Begin find_outliers for {:} jobs and with {:} threads".format(Njobs, Nthred))
 
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nthred)
 results = pool.map(run_find_outliers, range(0,Njobs))
 
 print("Done!")

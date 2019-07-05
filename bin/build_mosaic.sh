@@ -3,7 +3,7 @@
 #PBS -N mos_ch@CHAN@_@PID@
 #PBS -o build_mosaic_ch@CHAN@.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=46,walltime=48:00:00
+#PBS -l nodes=1:node48cores:ppn=46,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     build_mosaic.sh @INFO@
@@ -17,7 +17,7 @@ mycd() { if [ -d $1 ]; then \cd $1; echo " --> $PWD";
     else echo "!! ERROR: $1 does not exit ... quitting"; exit 5; fi; }
 
 wt() { echo "$(date "+%s.%N") $bdate" | \
-	awk '{printf "%0.2f hrs\n", ($1-$2)/3600}'; }  # wall time
+    awk '{printf "%0.2f hrs\n", ($1-$2)/3600}'; }  # wall time
 
 # load needed softs and set paths
 
@@ -30,15 +30,15 @@ bdate=$(date "+%s.%N")       # start time/date
 node=$(hostname)   # NB: compute nodes don't have .iap.fr in name
 
 # check if running via shell or via qsub:
-module=build_mosaic
+module=build_mosaics
 
 if [[ "$0" =~ "$module" ]]; then
-	WRK=$(pwd)
-    echo "## This is $module: running as shell script on $node"
+    WRK=$(pwd)
+    echo "## This is ${module}.sh: running as shell script on $node"
     if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi
 else
-    echo "## This is $module: running via qsub on $node"
-	WRK=@WRK@   # data are here
+    echo "## This is ${module}.sh: running via qsub on $node"
+    WRK=@WRK@   # data are here
     dry=0
 fi
 
@@ -48,12 +48,8 @@ fi
 
 mycd $WRK
 
-# setup the temp dir for this channel
-tmpdir=temp/@CHAN@
-if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
-
 # Build the command line
-comm="python $module.py @CHAN@"
+comm="python make_mosaics_function.py @CHAN@"
 
 echo " - Work dir is:  $WRK"
 echo " - Command is: $comm"
@@ -62,7 +58,7 @@ echo " - command line is: "
 echo " % $comm"
 
 if [ $dry -eq 1 ]; then
-	echo ">> $module finished in dry mode";	echo ""; exit 1
+    echo ">> make_mosaic ch@CHAN@ finished in dry mode";    echo ""; exit 1
 fi
 
 # Now do the work
@@ -75,7 +71,7 @@ echo ""
 
 echo ""
 echo "------------------------------------------------------------------"
-echo " >>>>  $module finished on $(date) - walltime: $(wt)  <<<<"
+echo " >>>>  build_mosaic ch@CHAN@finished on $(date) - walltime: $(wt)  <<<<"
 echo "------------------------------------------------------------------"
 echo ""
 exit 0

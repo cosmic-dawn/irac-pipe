@@ -1,28 +1,34 @@
+#---------------------------------------------------------------------------------------------------
+# Spitzer / irac pipeline functions
+#---------------------------------------------------------------------------------------------------
 
 import numpy as np
 import numpy.ma as ma
+import re, os,shutil
 
 from scipy.interpolate import interp1d
-
 import scipy.ndimage as ndimage
 from statsmodels import robust
 
+from astropy import wcs
+from astropy import units as u
 from astropy.io import fits
 from astropy.io import ascii
-from astropy import wcs
 from astropy.coordinates import SkyCoord
-from astropy import units as u
 from astropy.table import Table, Column, MaskedColumn, hstack
-
-import re
-import os,shutil
 
 import warnings
 warnings.filterwarnings("ignore")
 
 from supermopex import *
 
-def scratch_dir_prefix(cluster,JobNo):
+
+#---------------------------------------------------------------------------------------------------
+# Select area for scratch directory
+#---------------------------------------------------------------------------------------------------
+
+def scratch_dir_prefix(cluster, JobNo):
+
     if cluster == 'candide':
         locnode = os.uname().nodename.split('.')[0]  # name of process node
 
@@ -37,7 +43,12 @@ def scratch_dir_prefix(cluster,JobNo):
     return(processTMPDIRprefix)
 
 
-def make_joblist(log,AORlog):
+#---------------------------------------------------------------------------------------------------
+# Make the list of jobs, one per AOR.chan, from the list of frames and the list of AORs
+#---------------------------------------------------------------------------------------------------
+
+def make_joblist(log, AORlog):
+
     #get a list of AORs
     AORlist = list(set(log['AOR']))
     Naor = len(AORlist)
@@ -45,7 +56,7 @@ def make_joblist(log,AORlog):
     #make a list of channels and AORS
     JobList=list()
     for aorIDX in range(0,Naor):
-        ChMax = AORlog['NumChannel'][aorIDX] #np.max(log['Channel'][(log['AOR']==AORlist[aorIDX]).nonzero()])
+        ChMax = AORlog['NumChannel'][aorIDX]   #np.max(log['Channel'][(log['AOR']==AORlist[aorIDX]).nonzero()])
         HDR = AORlog['HDR'][aorIDX]
         for Ch in range(1,ChMax+1):
             Nframes =len(log['Channel'][((log['AOR']==AORlist[aorIDX])&(log['Channel']==Ch)).nonzero()])
@@ -56,7 +67,10 @@ def make_joblist(log,AORlog):
     return(JobList)
 
 
-#routine to apply proper motoins to GAIA catalog
+#---------------------------------------------------------------------------------------------------
+# routine to apply proper motoins to GAIA catalog
+#---------------------------------------------------------------------------------------------------
+
 def applyGAIApm(MJD,StarData):
 
     PMtime = (MJD-51558.5)/365.25   #time since 2015.5 (GAIA DR2 epoch) for proper motion correction
@@ -90,6 +104,11 @@ def applyGAIApm(MJD,StarData):
 
     AstrometryData=np.asarray(list(zip(RAstar,DECstar)),dtype=np.double)
     return(AstrometryData)
+
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
 
 def applyGAIApm_wError(MJD,StarData):
     
@@ -140,7 +159,10 @@ def applyGAIApm_wError(MJD,StarData):
     return(AstrometryData)
 
 
-#routine to find stars to find star
+#---------------------------------------------------------------------------------------------------
+# routine to find stars to find star
+#---------------------------------------------------------------------------------------------------
+
 def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     
     AOR = JobList['AOR'][JobNo]
@@ -259,7 +281,10 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
 
-#routine to find stars in order to check the astrometry solution
+#---------------------------------------------------------------------------------------------------
+# routine to find stars in order to check the astrometry solution
+#---------------------------------------------------------------------------------------------------
+
 def checkstar(JobNo,JobList,log,AstrometryStars):
     
     AOR = JobList['AOR'][JobNo]
@@ -331,6 +356,11 @@ def checkstar(JobNo,JobList,log,AstrometryStars):
 
     print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
     
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
+
 def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     
     ChMax =  JobList['ChannelMax'][JobNo]
@@ -460,6 +490,11 @@ def fix_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     astrofix = np.array([JobNo,corrRA,corrDEC,sig_RA/np.sqrt(GoodStars),sig_DEC/np.sqrt(GoodStars),GoodStars],dtype=np.double)
     return(astrofix)
 
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
+
 def check_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
     
     ChMax =  JobList['ChannelMax'][JobNo]
@@ -580,6 +615,11 @@ def check_astrometry(JobNo,log,Nrows,JobList,AstrometryStars):
 
     astrofix = np.array([JobNo,corrRA,corrDEC,sig_RA/np.sqrt(GoodStars),sig_DEC/np.sqrt(GoodStars),GoodStars],dtype=np.double)
     return(astrofix)
+
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
 
 def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
     
@@ -754,6 +794,11 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
 
     print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
+
 def subtract_median(JobNo,JobList,log,AstroFix):
     
     AOR = JobList['AOR'][JobNo]
@@ -884,6 +929,10 @@ def subtract_median(JobNo,JobList,log,AstroFix):
 
     print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
 
 def make_median_image(JobNo, JobList, log, AORlog, debug):
     
@@ -1102,6 +1151,10 @@ def make_median_image(JobNo, JobList, log, AORlog, debug):
 
     print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
 def run_mosaic_geometry(JobNo,JobList):
     
     Ch = JobList['Channel'][JobNo]
@@ -1136,25 +1189,31 @@ def run_mosaic_geometry(JobNo,JobList):
     
     return(num_files)
 
-def find_outlier_tile(JobNo,JobList):
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
+
+def find_outlier_tile(JobNo, JobList, debug):
     
+    if (debug == 1):
+        print(" ## ACTIVATED DEBUG MODE ##")
+
     Ch = JobList['Channel'][JobNo]
     Tile = JobList['TileNumber'][JobNo]
     
-    # temporary files:
-    # use local scratch area on process node, if large, to avoid heavy network usage
-    processTMPDIR =  scratch_dir_prefix(cluster,JobNo) + 'tmpdir_' + PIDname + '_tile_j' + str(JobNo) + '/'
-    
+    # temporary files: use local scratch area on process node, if large, to avoid heavy network usage
+    processTMPDIR = "{:}tmpdir_{:}_tile_j{:03d}/".format(scratch_dir_prefix(cluster,JobNo), PIDname, JobNo)    
     shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
 
     if os.path.dirname(processTMPDIR):
-        print(">> Clean temp dir {:} created".format(processTMPDIR))
+        if debug == 1: print(">> Clean temp dir {:} created".format(processTMPDIR))
     else:
-        print("## ERROR: could not create temp dir .... quitting")
+        print("## ERROR: could not create temp dir {:} .... quitting".format(processTMPDIR))
         sys.exit(3)
     
-    print(">> Using temp dir {:}".format(processTMPDIR))
+    print("## Begin find_outliers job {:} for tile {:}, tmpdir is {:}".format(JobNo, Tile, processTMPDIR))
 
     #input lists
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
@@ -1162,7 +1221,7 @@ def find_outlier_tile(JobNo,JobList):
     unclist   = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + ScaledUncSuffix + '.lst'
     
     #Run Mosaic
-    logfile = 'make_tile_'+str(JobNo)+'.log'
+    logfile = 'outliers_'+str(JobNo)+'.log'
     print(">> logfile is {:}".format(logfile))
     cmd = 'mosaic.pl -n ' + IRACOutlierConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
 #    cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR
@@ -1172,7 +1231,7 @@ def find_outlier_tile(JobNo,JobList):
     
     #move the files
     basename = OutputDIR + PIDname + '.irac.tile.' + str(Tile) + '.'
-    print(">> Products root name: {:}".format(Tile))
+#    print(">> Products root name: {:}".format(Tile))
     
     mosaic = basename + str(Ch) + '.mosaic.fits'
     try:
@@ -1218,7 +1277,6 @@ def find_outlier_tile(JobNo,JobList):
         print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead")
         os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {:}".format(processTMPDIR, medmosaic))
         # shutil.copy doesn't take wildcards
-        #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts', medmosaic)
 
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
@@ -1226,16 +1284,20 @@ def find_outlier_tile(JobNo,JobList):
         print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic_unc.fits not found")
         print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
         os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {:}".format(processTMPDIR, medmosaicunc))
-        #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts',medmosaicunc)
     
     # clean up:  done in shell script if all products found
     cleanupCMD = 'rm -rf ' + processTMPDIR
-#    print(cleanupCMD)
-#    os.system(cleanupCMD)
+    print("## Finished job {:}".format(JobNo))
+    print(cleanupCMD)
+    os.system(cleanupCMD)
 
 
+#---------------------------------------------------------------------------------------------------
 #used to flag rmask files in multiple outlier rejection tiles above
-def get_rmask_dce(FileNo,RmaskFileList):
+#---------------------------------------------------------------------------------------------------
+
+def get_rmask_dce(FileNo, RmaskFileList):
+
     RmaskFile = RmaskFileList['Filename'][FileNo] #get the file name
     
     imageHDU = fits.open(RmaskFile) #Read image
@@ -1243,34 +1305,48 @@ def get_rmask_dce(FileNo,RmaskFileList):
     imageHDU.close()
     return(DCEnumber)
 
-#used to combine the rmaks together into single files and copy them back to the data directory
-def combine_rmasks(JobNo,RmaskFileList,log):
+
+#---------------------------------------------------------------------------------------------------
+# used to combine the rmaks together into single files and copy them back to the data directory
+#---------------------------------------------------------------------------------------------------
+
+def combine_rmasks(JobNo, RmaskFileList, log):
+
     DCE =  log['DCE'][JobNo]
     Ch = log['Channel'][JobNo]
     basefilename = log['Filename'][JobNo]
     RMaskFiles = list(set(RmaskFileList['Filename'][(RmaskFileList['DCE']==DCE).nonzero()]))
+    Nfiles = len(RMaskFiles)
+#    print("## Begin job {:} with {:} files".format(JobNo, Nfiles))
     
-    #setup the output file
-    inputSuffix  = '_' + bcdSuffix + '.fits'
-    outputSuffix = '_' + rmaskSuffix + '.fits'
-    outputRMask = re.sub(inputSuffix,outputSuffix,basefilename)
-    
-    Rmask_data = np.zeros([256,256],dtype=np.uint8)
-    
-    for rmask in RMaskFiles:
-        imageHDU = fits.open(rmask) #Read image
-        Rmask_data = Rmask_data | imageHDU[0].data #copy over the mask data in the overlapping area, set rest to 0
-    
-    imageHDU[0].data = Rmask_data
-    imageHDU.writeto(outputRMask,overwrite='True')
-    imageHDU.close()
-    print("Wrote combined Rmask to " + outputRMask)
+    if ( Nfiles == 0 ):
+        print("## WARNING: job {:} has no files ... nothing to do".format(JobNo))
+    else:
+        #setup the output file
+        inputSuffix  = '_' + bcdSuffix + '.fits'
+        outputSuffix = '_' + rmaskSuffix + '.fits'
+        outputRMask = re.sub(inputSuffix, outputSuffix, basefilename)
+        
+        Rmask_data = np.zeros([256,256], dtype=np.uint8)
+        for rmask in RMaskFiles: # here we do the actual combination
+            #print(rmask)
+            imageHDU = fits.open(rmask)
+            Rmask_data = Rmask_data | imageHDU[0].data #copy over the mask data in the overlapping area, set rest to 0
+
+        imageHDU[0].data = Rmask_data
+        imageHDU.writeto(outputRMask,overwrite='True')
+        imageHDU.close()
+        print("## Finished job {:} with {:} tiles - wrote combined Rmask to {:}".format(JobNo, Nfiles, outputRMask))
+
+#---------------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------------
 
 def make_mosaic(Ch):
     
     # temporary files:
     # use local scratch area on process node, if large, to avoid heavy network usage
-    processTMPDIR =  scratch_dir_prefix(cluster,Ch) + 'tmpdir_' + PIDname + '_mosaic_Ch' + str(Ch) + '/'
+    processTMPDIR =  scratch_dir_prefix(cluster, Ch) + 'tmpdir_' + PIDname + '_mosaic_Ch' + str(Ch) + '/'
     
     shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
@@ -1281,16 +1357,14 @@ def make_mosaic(Ch):
         print("## ERROR: could not create temp dir .... quitting")
         sys.exit(3)
 
-    print(">> Using temp dir {:}".format(processTMPDIR))
-
     #input lists
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
-    masklist  = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + starMaskSuffix + '.lst'
+    masklist  = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + starMaskSuffix  + '.lst'
     unclist   = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + ScaledUncSuffix + '.lst'
     rmasklist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.rmask.lst'
 
     #input FIF
-    iracFIF = OutputDIR + PIDname + '.irac.FIF.tbl'
+    iracFIF   = OutputDIR + PIDname + '.irac.FIF.tbl'
 
     #Run Mosaic
     logfile = 'make_mosaic_'+str(Ch)+'.log'
@@ -1300,43 +1374,52 @@ def make_mosaic(Ch):
     print("   "+cmd)
     os.system(cmd)
     
-    #move the files
-    basename = OutputDIR + PIDname + '.irac.'
-    print(">> Products root name: {:}".format(Ch))
-    
-    mosaic = basename + str(Ch) + '.mosaic.fits'
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits',mosaic)
-    except:
-        print("##ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
+    #move the files to the Outputs directory
+    basename = OutputDIR + PIDname + '.irac.' + str(Ch)
 
-    mosaicunc = basename + str(Ch) + '.mosaic_unc.fits'
+    mosaic = basename + '.mosaic.fits'
+    print(">> Products root name: {:}".format(mosaic))
+    cperrs = 0
+    try:
+        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits', mosaic)
+    except:
+        print("##ERROR: {:}/Combine-mosaic/mosaic.fits not found".format(processTMPDIR.spit('/')[-1]))
+        cperrs = 1
+
+    mosaicunc = basename + '.mosaic_unc.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
     except:
-        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_unc.fits not found")
+        print("##ERROR: {:}/Combine-mosaic/mosaic_unc.fits not found".format(processTMPDIR.spit('/')[-1]))
+        cperrs = 1
 
-    mosaiccov = basename + str(Ch) + '.mosaic_cov.fits'
+    mosaiccov = basename + '.mosaic_cov.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
     except:
-        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_cov.fits not found")
+        print("##ERROR: {:}/Combine-mosaic/mosaic_cov.fits not found".format(processTMPDIR.spit('/')[-1]))
+        cperrs = 1
 
-    mosaicstd = basename + str(Ch) + '.mosaic_std.fits'
+    mosaicstd = basename + '.mosaic_std.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
     except:
-        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_std.fits not found")
+        print("##ERROR: {:}/Combine-mosaic/mosaic_std.fits not found".format(processTMPDIR.spit('/')[-1]))
+        cperrs = 1
+
+    if cperrs == 1:
+        print(" ## Quitting ... check products in {:}".format(processTMPDIR.spit('/')[-1]))
+        sys.exit(3)
 
     # cp the median_mosaic products to the output dir
-    medmosaic = basename + str(Ch) + '.median_mosaic.fits'
-    medmosaicunc = basename + str(Ch) + '.median_mosaic_unc.fits'
+    medmosaic = basename + '.median_mosaic.fits'
+    medmosaicunc = basename + '.median_mosaic_unc.fits'
     
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic.fits',medmosaic)
     except:
-        print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic.fits not found")
-        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead")
+        print("## WARNING: {:}/Combine-mosaic/median_mosaic.fits not found".format(processTMPDIR.spit('/')[-1]))
+        print("## ====> using /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead")
         os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {:}".format(processTMPDIR, medmosaic))
         # shutil.copy doesn't take wildcards
         #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts', medmosaic)
@@ -1344,12 +1427,14 @@ def make_mosaic(Ch):
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
     except:
-        print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic_unc.fits not found")
-        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
+        print("## WARNING: {:}/Combine-mosaic/median_mosaic_unc.fits not found".format(processTMPDIR.spit('/')[-1]))
+        print("## ====> using /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
         os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {:}".format(processTMPDIR, medmosaicunc))
         #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts',medmosaicunc)
     
     # clean up:  done in shell script if all products found
     cleanupCMD = 'rm -rf ' + processTMPDIR
-#    print(cleanupCMD)
-#    os.system(cleanupCMD)
+    print(cleanupCMD)
+    os.system(cleanupCMD)
+
+#---------------------------------------------------------------------------------------------------

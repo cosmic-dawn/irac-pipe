@@ -1,15 +1,15 @@
 #!/bin/bash
 #PBS -S /bin/bash
-#PBS -N setup_@PID@
-#PBS -o setup_pipeline.out
+#PBS -N outliers_@PID@
+#PBS -o find_outliers.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=24:00:00
+#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
-# File:     setup_pipeline.sh @INFO@
-# Purpose:  wrapper for setup_pipeline.py
+# File:     find_outliers.sh @INFO@
+# Purpose:  wrapper for find_outliers.py
 #-----------------------------------------------------------------------------
-set -u
+set -u 
 
 ec()  { echo    "$(date "+[%d.%h.%y %T"]) $1 " ; } 
 ecn() { echo -n "$(date "+[%d.%h.%y %T"]) $1 " ; } 
@@ -30,15 +30,15 @@ bdate=$(date "+%s.%N")       # start time/date
 node=$(hostname)   # NB: compute nodes don't have .iap.fr in name
 
 # check if running via shell or via qsub:
-module=setup_pipeline
+module=find_outliers
 
 if [[ "$0" =~ "$module" ]]; then
-	WRK=$(pwd)
+    WRK=$(pwd)
     echo "## This is ${module}.sh: running as shell script on $node"
     if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi
 else
-    echo "## This is ${module}.sh: running via qsub  on $node"
-	WRK=@WRK@   # data are here
+    echo "## This is ${module}.sh: running via qsub on $node"
+    WRK=@WRK@   # data are here
     dry=0
 fi
 
@@ -49,7 +49,7 @@ fi
 mycd $WRK
 
 # Build the command line
-comm="python setup_pipeline.py"
+comm="python $module.py"
 
 echo " - Work dir is:  $WRK"
 echo " - Command is: $comm"

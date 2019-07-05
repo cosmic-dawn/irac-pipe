@@ -36,7 +36,7 @@ node=$(hostname)   # NB: compute nodes don't have .iap.fr in name
 
 if [[ "$0" =~ "$module" ]]; then
 	WRK=$(pwd)
-    echo "## This is $module: running as shell script on $node"
+    echo "## This is ${module}.sh: running as shell script on $node"
     if [ $# -eq 0 ]; then 
     	echo "ERROR: Must give a job nomber"
     	exit 5
@@ -49,7 +49,7 @@ if [[ "$0" =~ "$module" ]]; then
     fi
     if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi
 else
-    echo "## This is $module: running via qsub on $node"
+    echo "## This is ${module}.sh: running via qsub on $node"
 	WRK=@WRK@   # data are here
 	jobNo=@JOB@
     dry=0

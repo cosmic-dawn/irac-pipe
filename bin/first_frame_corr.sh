@@ -34,10 +34,10 @@ module=first_frame_corr
 
 if [[ "$0" =~ "$module" ]]; then
 	WRK=$(pwd)
-    echo "## This is $module: running as shell script on $node"
+    echo "## This is ${module}.sh: running as shell script on $node"
     if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi
 else
-    echo "## This is $module: running via qsub on $node"
+    echo "## This is ${module}.sh: running via qsub on $node"
 	WRK=@WRK@   # data are here
     dry=0
 fi

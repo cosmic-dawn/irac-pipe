@@ -16,7 +16,7 @@ rawlog = ascii.read(LogTable,format="ipac")
 logIRAC = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 # AMo: name of table with all tiles - before discarding those tiles with no data
-AllTiles = OutputDIR + PIDname + '.all_mosaic_tiles.tbl'
+AllTiles = OutputDIR + 'jobs.tiles.tbl'
 
 if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
 
@@ -26,7 +26,7 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
         FIFlist = OutputDIR + PIDname + '.irac.FIF.' + corDataSuffix + '.lst' 
         iracFIF = OutputDIR + PIDname + '.irac.FIF.tbl' 
         # now run fiducial_frame.pl (wrapper forFIF  fiducial_image_frame) to build header_list.tbl
-        print('==> Run FIF to figure out mosaic geometry (build header_list.tbl)')
+        print(' Run FIF to figure out mosaic geometry (build header_list.tbl)')
         cmd = 'mosaic.pl -n irac_FIF.nl -I ' + FIFlist + ' -O ' + TMPDIR
         os.system(cmd)
         
@@ -60,7 +60,7 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
         Nx = int(np.floor(np.double(NAXIS1)/MosaicTileSize)+1)
         Ny = int(np.floor(np.double(NAXIS2)/MosaicTileSize)+1)
         Ntot = Nx*Ny
-        print("==> Split mosaic into Nx={} x Ny={} tiles".format(Nx,Ny))
+        print(" Split mosaic into Nx={} x Ny={} tiles".format(Nx,Ny))
     
         #make new FIFs for each tile
         tileID=0
@@ -104,8 +104,8 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
                 tileFIFfile.close()  # write it out
                 tileID+=1
 
-        print("Wrote FIF files for {} tiles".format(tileID))
-        print("Now build job list")
+        print(" Wrote FIF files for {} tiles".format(tileID))
+        print(" Now build job list")
     
         #Make a job list for the mosaic tiles
         #Figure out number of channels and loop over them
@@ -127,12 +127,12 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
 
     Njobs = len(JobList)
 
-    print("Built job list {} with {} jobs".format(AllTiles, Njobs))
+    print(" Built job list {} with {} jobs".format(AllTiles, Njobs))
 
     #now lets run mosaic geometry to see if there are any files in each tile
     nproc=int(2*Nproc/3)
-#    nproc=24
-    print("Finding exposures for each tile with {} threads".format(nproc))
+
+    print(" Find exposures for each tile with {} threads".format(nproc))
     pool = mp.Pool(processes=nproc)
     results = pool.map(partial(run_mosaic_geometry,JobList=JobList), range(0,Njobs))
     pool.close()
@@ -141,9 +141,8 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
 
     #Find the tiles with frames associated
     GoodTiles = JobList[:][np.where(JobList['NumFrames'] > 0)]
-    #BadTiles = JobList[:][np.where(JobList['NumFrames'] == 0)]
 
     #Write list of tiles with data to an output
     print("")
-    print("Writing list of mosaic tiles to " + str(TileListFile))
+    print(" Write list of good mosaic tiles to {:}".format(TileListFile))
     ascii.write(GoodTiles, TileListFile, format="ipac", overwrite=True)

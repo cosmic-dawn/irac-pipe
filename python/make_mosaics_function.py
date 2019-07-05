@@ -1,13 +1,13 @@
 #!/opt/local/bin/python
 
-from supermopex import *
-from spitzer_pipeline_functions import *
+import sys
 
 import numpy as np
 from astropy.io import ascii
 from astropy.table import Table, Column, MaskedColumn
 
-import sys
+from supermopex import *
+from spitzer_pipeline_functions import *
 from optparse import OptionParser
 
 #parse the arguments
