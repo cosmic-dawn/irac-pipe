@@ -39,7 +39,7 @@ delete_intermediate_files = 1
 
 ###### Multi-processing Parameters ######
 do_multiprocess = 'manual'
-ncpu_multiprocess = 7
+ncpu_multiprocess = 10
 
 
 
