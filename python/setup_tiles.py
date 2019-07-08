@@ -16,7 +16,7 @@ rawlog = ascii.read(LogTable,format="ipac")
 logIRAC = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 # AMo: name of table with all tiles - before discarding those tiles with no data
-AllTiles = OutputDIR + 'jobs.tiles.tbl'
+AllTiles = TMPDIR + 'jobs.tiles.tbl'
 
 if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
 
@@ -123,6 +123,7 @@ if (len(logIRAC) > 0):   #Do IRAC if there are IRAC files
         ascii.write(JobList, AllTiles, format="ipac",overwrite=True)
 
     else:
+        print("# Using previously built list of all tiles {:}".format(AllTiles))
         JobList = ascii.read(AllTiles, format="ipac")
 
     Njobs = len(JobList)

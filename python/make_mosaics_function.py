@@ -21,8 +21,8 @@ if len(args) < 1:
     parser.error("Incorrect number of arguments.")
 
 #read job number
-Ch=int(args[0])
+Ch = int(args[0])
 
-make_mosaic(Ch)
+build_mosaic(Ch)
 
 
