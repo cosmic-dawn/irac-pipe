@@ -687,8 +687,8 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
     tlf=${odir}/${PID}$(grep '^TileListFile ' $pars | cut -d\' -f2) 
     njobs=$(cat $tlf | grep $PID | wc -l)
     if [ -e $tlf ] && [ $njobs -gt 0 ]; then
-        ec "# ==> $(grep Split\ mosaic $module.out)"
-        ec "# ==> $(grep Wrote\ FIF    $module.out)"
+        ec "# ==>$(grep Split\ mosaic $module.out)"
+        ec "# ==>$(grep Wrote\ FIF    $module.out)"
         ec "# ==> Built mosaic tile list with $(($njobs-4))  entries (jobs)"
     else
         ec "# PROBLEM: $tlf not found or Njobs = 0"
@@ -720,16 +720,38 @@ if [[ $1 =~ "find_out" ]]       || [[ $1 =~ "outli" ]] || [ $auto == "T" ]; then
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
 
-    grep -e Traceback -e MALLOC -e Err make_tile_*.log > make_tile.errs
-    nerr=$(cat make_tile.errs | wc -l)
-    if [ $nerr -gr 1 ]; then
+	# outliers_*.log are from mopex - look for mopex errors.  First, last line of should be
+	# "Wrapper-script mosaic.pl terminated normally", if not ... then there is a problem
+	for f in out*.log; do echo -n "$f  ";  tail -5 $f | strings | tail -1 ; done | grep -v Wrapper > outliers.failed
+	nerr=$(cat outliers.failed | wc -l)
+	if [ $nerr -ge 1 ]; then
+		ec "# the following jobs did not termainate normally:"
+		cat outliers.failed
+		# Look for known erros in failed outliers_*.log
+		rm -f $module.errs
+		for l in $(cut -d\  -f1 outliers.failed); do
+			echo "-- in $l" >> $modules.errs
+			grep -n -e MALLOC -e Err -e Warning -e uninitialized\ value $ll >> $module.errs
+		done
+		ec "# Known errors in $module.errs"
+		askuser
+	else
+		ec "# All find_outliers jobs terminated normally (mopex dixit)"
+		rm outliers.errs
+	fi
+
+    grep -n -e MALLOC -e Err -e Warning -e uninitialized\ value outliers_*.log > $module.errs
+    nerr=$(cat $module.errs | wc -l)
+    if [ $nerr -ge 1 ]; then
         ec "# Found $nerr errors in logfiles - see make_tile.errs"
         askuser
+	else
+		rm $module.errs
     fi
     
     # put away logfiles
-    mkdir make_tile.logs
-    mv make_tile_*.log make_tile.logs
+    mkdir outliers.logs
+    mv outliers_*.log outliers.logs
 
     end_step
 fi
@@ -832,12 +854,12 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     fi
     
     # 2. check .out file for other errors (python)
-    errfile=$module.err
-    grep -i -n -e Error -e Exception -e MALLOC ${module}_ch?.out > $errfile
-    grep -n exit ${module}_ch?.out | grep -v ' 0' >> $errfile
+	# mopex logfiles are checked in python function for each chan
+	errfile=$module.err
+    grep -i -n -e Error -e Exception -e MALLOC make_mosaic_ch?.out > $errfile
+    grep -n exit make_mosaic_ch?.out | grep -v ' 0' >> $errfile
     nerr=$(cat $errfile | wc -l)
-    # There are $nsub FileNotFoundError from the copy files at the end that is
-    # attempted in every case
+
     if [ $nerr -gt $nsub ]; then
         ec "PROBLEM: found $nerr errors in .out files ... check file $errfile"
         head -6 $errfile ; askuser
@@ -848,11 +870,10 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     rm build.qall addkeyword.txt
     # NB FIF.tbl needed to rerun mosaics; else rebuild by prep_mosaic
     
-    # and more
     ec "# The mosaics are in:"
-    ls -lthr $odir/$PID.irac.?.mosaic.fits | cut -d\  -f6-9
+    ls -1 $odir/$PID.irac.?.mosaic.fits 
     ec "#-----------------------------------------------------------------------------"
-    ec "# Pipeline step $module finished successfully ... good job!!  <<<<"
+    ec "# >>>>  Pipeline step $module finished successfully ... good job!!  <<<<"
     ec "#-----------------------------------------------------------------------------"
     ec "#                                                                             "
     ec "  #=================================================#"
@@ -860,7 +881,6 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     ec "  #          Here ends the irac pipeline            #"
     ec "  #                                                 #"
     ec "  #=================================================#"
-#   ec "# >>>>       End of Spitzer/IRAC pipeline ... great job!!      <<<<"
     ec ""
 #    ec "#-----------------------------------------------------------------------------"
 #    echo "" | tee -a $pipelog
