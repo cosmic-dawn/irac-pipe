@@ -4,7 +4,7 @@
 
 import numpy as np
 import numpy.ma as ma
-import re, os,shutil
+import sys, re, os, shutil
 
 from scipy.interpolate import interp1d
 import scipy.ndimage as ndimage
@@ -1221,7 +1221,7 @@ def find_outlier_tile(JobNo, JobList, debug):
     unclist   = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + ScaledUncSuffix + '.lst'
     
     #Run Mosaic
-    logfile = 'outliers_'+str(JobNo)+'.log'
+    logfile = 'outliers_{:03d}.log'.format(JobNo)
     print(">> logfile is {:}".format(logfile))
     cmd = 'mosaic.pl -n ' + IRACOutlierConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
 #    cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR
@@ -1238,24 +1238,33 @@ def find_outlier_tile(JobNo, JobList, debug):
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits',mosaic)
     except:
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
+        cperrs = 1
     
     mosaicunc = basename + str(Ch) + '.mosaic_unc.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
     except:
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic_unc.fits not found")
+        cperrs = 1
 
     mosaiccov = basename + str(Ch) + '.mosaic_cov.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
     except:
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic_cov.fits not found")
+        cperrs = 1
     
     mosaicstd = basename + str(Ch) + '.mosaic_std.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
     except:
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic_std.fits not found")
+        cperrs = 1
+
+    if cperrs == 1:
+        print(" ## ERROR in find_outliers job {:} ... see {:} for details".format(JobNo, logfile)
+#        print(" ## ERROR in find_outliers job {:} ... check products in {:}".format(processTMPDIR.spit('/')[-1]))
+        sys.exit(3)
 
     # copy the output RMASKS to an area so they can be combined
     RMaskOutdir = RMaskDir + 'tile_' + str(Tile)
@@ -1320,7 +1329,7 @@ def combine_rmasks(JobNo, RmaskFileList, log):
 #    print("## Begin job {:} with {:} files".format(JobNo, Nfiles))
     
     if ( Nfiles == 0 ):
-        print("## WARNING: job {:} has no files ... nothing to do".format(JobNo))
+        print("## ERROR: job {:} DCE {:} has no rmask files ... ".format(JobNo, DCE))
     else:
         #setup the output file
         inputSuffix  = '_' + bcdSuffix + '.fits'
@@ -1329,7 +1338,6 @@ def combine_rmasks(JobNo, RmaskFileList, log):
         
         Rmask_data = np.zeros([256,256], dtype=np.uint8)
         for rmask in RMaskFiles: # here we do the actual combination
-            #print(rmask)
             imageHDU = fits.open(rmask)
             Rmask_data = Rmask_data | imageHDU[0].data #copy over the mask data in the overlapping area, set rest to 0
 
@@ -1342,7 +1350,7 @@ def combine_rmasks(JobNo, RmaskFileList, log):
 #
 #---------------------------------------------------------------------------------------------------
 
-def make_mosaic(Ch):
+def build_mosaic(Ch):
     
     # temporary files:
     # use local scratch area on process node, if large, to avoid heavy network usage
@@ -1367,12 +1375,24 @@ def make_mosaic(Ch):
     iracFIF   = OutputDIR + PIDname + '.irac.FIF.tbl'
 
     #Run Mosaic
-    logfile = 'make_mosaic_'+str(Ch)+'.log'
+    logfile = 'build_mosaic_ch{:}.log'.format(Ch)
     print(">> logfile is {:}".format(logfile))
     cmd = 'mosaic.pl -n ' + IRACMosaicConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -R ' + rmasklist + ' -F ' + iracFIF + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
     print(">> command line is:")
     print("   "+cmd)
     os.system(cmd)
+    
+    # check if it finshed properly
+    errfile="build_mosaic_ch{:}.err".format(Ch)
+    os.system("grep Error {:} > {:}".format(logfile, errfile))
+    with open(errfile, 'r') as f:
+        data = f.readlines()
+    if (len(data) > 0):
+        print("## ATTN: found errors in mopex logfile {:} ... quitting".format(logfile))
+        sys.exit()
+    else:
+        os.system("rm "+ errfile)
+
     
     #move the files to the Outputs directory
     basename = OutputDIR + PIDname + '.irac.' + str(Ch)
