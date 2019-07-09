@@ -40,11 +40,12 @@
 # v2.20: rm use_rel variable, add Nthred=Nproc/2 for py scripts    (24.jun.19)
 # v2.21: add find_outliers, comb_rmasks, make_mosaics; reset tabs
 #        adjust dynamic walltime,                                  (30.jun.19)
+# v2.22: more checks on find_outliers, and more                    (10.jul.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.21 (30.june.19)"
+vers="2.22 (10.jul.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -574,7 +575,7 @@ fi
 ### -  8. fix astrometry
 #-----------------------------------------------------------------------------
 
-if [[ $1 =~ "fix_astrometry" ]] || [ $1 == "astrom" ]  || [ $auto == "T" ]; then
+if [[ $1 =~ "fix_astr" ]] || [ $1 == "astrom" ]  || [ $auto == "T" ]; then
 
     if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
     ec "#-----------------------------------------------------------------------------"
@@ -778,7 +779,7 @@ if [[ $1 =~ "combine_rm" ]]     || [ $1 == "rmasks" ] || [ $auto == "T" ]; then
     # fix logfile (missing CRs)
     sed -i 's/s##/s\n##/' $module.out
 
-    nwarn=$(grep WARNING $module.out | wc -l)
+    nwarn=$(grep ERROR $module.out | wc -l)
     if [ $nwarn -ge 1 ]; then
         ec "# ATTN: found $nwarn jobs with NO files to combine"
     fi
@@ -1057,7 +1058,7 @@ if [[ $1 =~ "combine_tiles" ]]  || [ $1 == "combTiles" ] || [ $auto == "T" ]; th
     end_step
     exit 0
 
-exit
+fi
 
 #=============================================================================
 

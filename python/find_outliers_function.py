@@ -23,6 +23,13 @@ if len(args) < 1:
 #read job number
 JobNo=int(args[0])
 
+# check if debug mode
+if len(args) > 1:
+    debug = 1
+#    print("### DEBUG MODE ##")
+else:
+    debug = 0
+
 #WRead in the list of tiles
 JobList = ascii.read(TileListFile,format="ipac")
 Njobs = len(JobList)
@@ -30,6 +37,6 @@ Njobs = len(JobList)
 if (JobNo > Njobs):
     die("Requested job number greater than number of jobs available " + str(Njobs) + "!");
 
-find_outlier_tile(JobNo, JobList=JobList, debug=0)
+find_outlier_tile(JobNo, JobList=JobList, debug=debug)
 
 

@@ -41,6 +41,8 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 
 #genreate a joblist for parallelization
 JobList = make_joblist(log,AORlog)
+#JobListName = OutputDIR + 'jobs.medians.tbl'
+#JobList = ascii.read(JobListName, format="ipac")
 Njobs = len(JobList)
 
 if (JobNo > Njobs):

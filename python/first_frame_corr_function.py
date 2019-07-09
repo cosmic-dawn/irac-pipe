@@ -24,31 +24,31 @@ def first_frame_correct(JobNo):
     DCElist = log['DCE'][LogIDX]
     Nframes = len(files)
     
-    #print('First Frame Correction: job {:4d} of {}, AOR {} Ch {}'.format(JobNo, Njobs, AOR, Ch)) #,end="\r")
     print('## Begin ffcorr job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
 
-    MJD = MJDs[0]
-    #Check if we are in the Cryo mission
-    if (MJD > WarmMJD):
-        cryo = 0
-        print(">> Warm mission: apply correction")
-    else:
-        cryo = 1
-        print(">> Cryo mission: nothing to correct")
+# Thought it might be enough to do this once , but does not always work
+#    MJD = MJDs[0]
+#    #Check if we are in the Cryo mission
+#    if (MJD > WarmMJD):
+#        cryo = 0
+#        print(">> Warm mission: apply correction")
+#    else:
+#        cryo = 1
+#        print(">> Cryo mission: nothing to correct")
     
     for fileNo in range(0,Nframes):
     
-#       MJD = MJDs[fileNo]
+        MJD = MJDs[fileNo]
         BCDfilename = files[fileNo]
         
-#        #Check if we are in the Cryo mission
-#        if (MJD > WarmMJD):
-#            cryo = 0
-#            print("  Warm mission: apply correction")
-#        else:
-#            cryo = 1
-#            print("  Cryo mission: nothing to correct")
-        
+        #Check if we are in the Cryo mission
+        if (MJD > WarmMJD):
+            cryo = 0
+            print("  Warm mission: apply correction")
+        else:
+            cryo = 1
+            print("  Cryo mission: nothing to correct")
+            
         #setup  some file names
         #Setup file suffixes re replace
         inputSuffix  = '_' + bcdSuffix + '.fits'  #used in search
@@ -95,7 +95,7 @@ def first_frame_correct(JobNo):
             imageHDU.writeto(FFcorFile,overwrite='True')  #write out the final star subtracted image
 #            print('Wrote ' + str(fileNo +1) + ' of ' + str(Nframes) + ' ' + FFcorFile) #,end="\r")
 
-    print('## Finished job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
+    print('## Finished ffcorr job {:4d}: AOR {:8d} ch {:}'.format(JobNo, AOR, Ch))
     
 
 #parse the arguments

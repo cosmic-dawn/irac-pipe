@@ -23,13 +23,12 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 
 #genreate a joblist for parallelization
 JobList = make_joblist(log,AORlog)
+ascii.write(JobList, OutputDIR+'jobs.ffcorr.tbl', format="ipac", overwrite=True)
 Njobs = len(JobList)
-#Nthr  = int(Nproc*2/3)
-Nthr  = 24
 
-print("Running first frame correction with " + str(Nthr) + " threads.")
+print("Running first frame correction with " + str(Nthred) + " threads.")
 
-pool = mp.Pool(processes=Nthr)
+pool = mp.Pool(processes=Nthred)
 results = pool.map(run_firstframe, range(0,Njobs))
 
 print("Done!")

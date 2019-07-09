@@ -23,6 +23,8 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 
 #genreate a joblist for parallelization
 JobList = make_joblist(log,AORlog)
+JobListName = OutputDIR + 'jobs.medians.tbl'
+ascii.write(JobList, JobListName, format="ipac", overwrite=True)
 Njobs = len(JobList)
 
 # Nthred from supermopex

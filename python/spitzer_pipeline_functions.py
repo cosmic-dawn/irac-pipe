@@ -60,7 +60,8 @@ def make_joblist(log, AORlog):
         HDR = AORlog['HDR'][aorIDX]
         for Ch in range(1,ChMax+1):
             Nframes =len(log['Channel'][((log['AOR']==AORlist[aorIDX])&(log['Channel']==Ch)).nonzero()])
-            JobList.append([AORlist[aorIDX],HDR,Ch,Nframes])
+            if (Nframes > 0):
+                JobList.append([AORlist[aorIDX],HDR,Ch,Nframes])
 
     JobList = Table(rows=JobList,names=['AOR','HDR','Channel','NumFrames'])
 
@@ -937,7 +938,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
 def make_median_image(JobNo, JobList, log, AORlog, debug):
     
     if (debug == 1):
-        print(" ## ACTIVATED DEBUG MODE ##")
+        print("### ACTIVATED DEBUG MODE ###")
 
     AOR = JobList['AOR'][JobNo]
     Ch  = JobList['Channel'][JobNo]
@@ -1195,9 +1196,9 @@ def run_mosaic_geometry(JobNo,JobList):
 #---------------------------------------------------------------------------------------------------
 
 def find_outlier_tile(JobNo, JobList, debug):
-    
+
     if (debug == 1):
-        print(" ## ACTIVATED DEBUG MODE ##")
+        print("### ACTIVATED DEBUG MODE ###")
 
     Ch = JobList['Channel'][JobNo]
     Tile = JobList['TileNumber'][JobNo]
@@ -1208,7 +1209,7 @@ def find_outlier_tile(JobNo, JobList, debug):
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
 
     if os.path.dirname(processTMPDIR):
-        if debug == 1: print(">> Clean temp dir {:} created".format(processTMPDIR))
+        if debug == 1: print("DEBUG: Clean temp dir {:} created".format(processTMPDIR))
     else:
         print("## ERROR: could not create temp dir {:} .... quitting".format(processTMPDIR))
         sys.exit(3)
@@ -1222,7 +1223,7 @@ def find_outlier_tile(JobNo, JobList, debug):
     
     #Run Mosaic
     logfile = 'outliers_{:03d}.log'.format(JobNo)
-    print(">> logfile is {:}".format(logfile))
+    if debug == 1: print("DEBUG: logfile is {:}".format(logfile))
     cmd = 'mosaic.pl -n ' + IRACOutlierConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR+ ' > '+ logfile+' 2>&1 '
 #    cmd = 'mosaic.pl -n ' + IRACTileConfig + ' -I ' + imagelist + ' -S ' + unclist + ' -d ' + masklist + ' -F' + JobList['FIF'][JobNo] + ' -M ' + IRACPixelMasks[Ch-1] + ' -O ' +processTMPDIR
     print(">> command line is:")
@@ -1231,53 +1232,67 @@ def find_outlier_tile(JobNo, JobList, debug):
     
     #move the files
     basename = OutputDIR + PIDname + '.irac.tile.' + str(Tile) + '.'
-#    print(">> Products root name: {:}".format(Tile))
-    
-    mosaic = basename + str(Ch) + '.mosaic.fits'
+    basename = "{:}{:}.irac.tile.{:}.{:}.".format(OutputDIR, PIDname, Tile, Ch)
+    print(">> Products root name: {:}".format(basename))
+    cperrs = 0  # to keep track of errors
+
+    mosaic = basename + '.mosaic.fits'
     try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits',mosaic)
+        shutil.copy(processTMPDIR + 'Combine-mosaic/mosaic.fits',mosaic)
     except:
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
         cperrs = 1
     
-    mosaicunc = basename + str(Ch) + '.mosaic_unc.fits'
+    mosaicunc = basename + '.mosaic_unc.fits'
     try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
+        shutil.copy(processTMPDIR + 'Combine-mosaic/mosaic_unc.fits',mosaicunc)
     except:
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic_unc.fits not found")
         cperrs = 1
 
-    mosaiccov = basename + str(Ch) + '.mosaic_cov.fits'
+    mosaiccov = basename + '.mosaic_cov.fits'
     try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
+        shutil.copy(processTMPDIR + 'Combine-mosaic/mosaic_cov.fits',mosaiccov)
     except:
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic_cov.fits not found")
         cperrs = 1
     
-    mosaicstd = basename + str(Ch) + '.mosaic_std.fits'
+    mosaicstd = basename + '.mosaic_std.fits'
     try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
+        shutil.copy(processTMPDIR + 'Combine-mosaic/mosaic_std.fits',mosaicstd)
     except:
         print("##ERROR: TMPDIR/Combine-mosaic/mosaic_std.fits not found")
         cperrs = 1
 
     if cperrs == 1:
-        print(" ## ERROR in find_outliers job {:} ... see {:} for details".format(JobNo, logfile)
-#        print(" ## ERROR in find_outliers job {:} ... check products in {:}".format(processTMPDIR.spit('/')[-1]))
+        print(" ## ERROR in find_outliers job {:} ... see {:} for details".format(JobNo, logfile))
         sys.exit(3)
 
-    # copy the output RMASKS to an area so they can be combined
+    # move the output RMASKS to an area so they can be combined
+    # do in loop as may be too many for unix wildcard
     RMaskOutdir = RMaskDir + 'tile_' + str(Tile)
     MkDirCmd = 'mkdir -p ' + RMaskOutdir    
     os.system(MkDirCmd)
 
-    RMaskImages = processTMPDIR + '/Rmask-mosaic/*_rmask.fits'
-    MovCmd = 'mv ' + RMaskImages + ' ' + RMaskOutdir
-    os.system(MovCmd)
+    print('>> Look for Rmask files to move')
+    RMaskImages = processTMPDIR + 'Rmask-mosaic/'
+    fileList = TMPDIR + "rmasks_to_move_job_{:}.lst".format(JobNo)
+    findCmd  = "find {:} -name '*_rmask.fits' > {:}".format(RMaskImages, fileList)
+    if debug == 1: print("DEBUG: {:}".format(findCmd))
+    os.system(findCmd)
+    nmoved = 0
+    with open(fileList, 'r') as file:
+        for line in file:
+            fin = line.strip('\n')
+            fout = fin.split('/')[-1]
+            if debug == 1: print("DEBUG: mv {:} {:}".format(fin, RMaskOutdir+fout))
+            os.rename(fin, RMaskOutdir+fout)
+            nmoved += 1
+    print(">> Moved {:} rmask files from {:} to {:}".format(nmoved, RMaskImages, RMaskOutdir))
 
     # cp the median_mosaic products to the output dir
-    medmosaic = basename + str(Ch) + '.median_mosaic.fits'
-    medmosaicunc = basename + str(Ch) + '.median_mosaic_unc.fits'
+    medmosaic = basename  + '.median_mosaic.fits'
+    medmosaicunc = basename + '.median_mosaic_unc.fits'
 
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic.fits',medmosaic)
@@ -1291,13 +1306,13 @@ def find_outlier_tile(JobNo, JobList, debug):
         shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
     except:
         print("## ATTN: procTmpDir/Combine-mosaic/median_mosaic_unc.fits not found")
-        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
+        print("## ====> using     /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instead")
         os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {:}".format(processTMPDIR, medmosaicunc))
     
     # clean up:  done in shell script if all products found
     cleanupCMD = 'rm -rf ' + processTMPDIR
     print("## Finished job {:}".format(JobNo))
-    print(cleanupCMD)
+    JobNo(cleanupCMD)
     os.system(cleanupCMD)
 
 
@@ -1329,7 +1344,7 @@ def combine_rmasks(JobNo, RmaskFileList, log):
 #    print("## Begin job {:} with {:} files".format(JobNo, Nfiles))
     
     if ( Nfiles == 0 ):
-        print("## ERROR: job {:} DCE {:} has no rmask files ... ".format(JobNo, DCE))
+        print("## ERROR job {:} DCE {:} has no rmask files ... ".format(JobNo, DCE))
     else:
         #setup the output file
         inputSuffix  = '_' + bcdSuffix + '.fits'
@@ -1389,7 +1404,7 @@ def build_mosaic(Ch):
         data = f.readlines()
     if (len(data) > 0):
         print("## ATTN: found errors in mopex logfile {:} ... quitting".format(logfile))
-        sys.exit()
+        sys.exit(3)
     else:
         os.system("rm "+ errfile)
 
