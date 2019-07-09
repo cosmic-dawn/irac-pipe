@@ -1311,8 +1311,8 @@ def find_outlier_tile(JobNo, JobList, debug):
     
     # clean up:  done in shell script if all products found
     cleanupCMD = 'rm -rf ' + processTMPDIR
-    print("## Finished job {:}".format(JobNo))
-    JobNo(cleanupCMD)
+    print("## Finished job {:}; delete its tempdir {:}".format(JobNo, processTMPDIR))
+    #print(cleanupCMD)
     os.system(cleanupCMD)
 
 
