@@ -1,13 +1,13 @@
 #!/bin/bash
 #PBS -S /bin/bash
-#PBS -N mos_ch@CHAN@_@PID@
-#PBS -o build_mosaic_ch@CHAN@.out
+#PBS -N ols_@PID@_@JOB@
+#PBS -o outliers_@JOB@.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=46,walltime=@WTIME@
+#PBS -l nodes=1:ppn=11,walltime=18:00:00
 #
 #-----------------------------------------------------------------------------
-# File:     build_mosaic.sh @INFO@
-# Purpose:  wrapper for build_mosaic.py
+# File:     find_outliers_job.sh @INFO@
+# Purpose:  wrapper for find_outliers_function.py
 #-----------------------------------------------------------------------------
 set -u 
 
@@ -17,7 +17,7 @@ mycd() { if [ -d $1 ]; then \cd $1; echo " --> $PWD";
     else echo "!! ERROR: $1 does not exit ... quitting"; exit 5; fi; }
 
 wt() { echo "$(date "+%s.%N") $bdate" | \
-    awk '{printf "%0.2f hrs\n", ($1-$2)/3600}'; }  # wall time
+	awk '{printf "%0.2f hrs\n", ($1-$2)/3600}'; }  # wall time
 
 # load needed softs and set paths
 
@@ -30,15 +30,26 @@ bdate=$(date "+%s.%N")       # start time/date
 node=$(hostname)   # NB: compute nodes don't have .iap.fr in name
 
 # check if running via shell or via qsub:
-module=build_mosaics
+module=find_outliers_function
 
 if [[ "$0" =~ "$module" ]]; then
     WRK=$(pwd)
     echo "## This is ${module}.sh: running as shell script on $node"
+    if [ $# -eq 0 ]; then 
+        echo "ERROR: Must give a job number"
+        exit 5
+    else
+        if [ $1 == 'dry' ]; then echo "ERROR: Must give a job number"
+			exit 5
+        else
+			jobNo=$1
+        fi
+    fi
     if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi
 else
     echo "## This is ${module}.sh: running via qsub on $node"
     WRK=@WRK@   # data are here
+	jobNo=@JOB@
     dry=0
 fi
 
@@ -47,18 +58,17 @@ fi
 #-----------------------------------------------------------------------------
 
 mycd $WRK
-Nthred=$(grep '^Nthred' supermopex.py | tr -s ' ' | cut -d\  -f3)
 
 # Build the command line
-comm="python make_mosaics_function.py @CHAN@"
+comm="python $module.py $jobNo"
 
 echo " - Work dir is:  $WRK"
-echo " - Starting on $(date) on $(hostname) with @NTHRED@ threads"
+echo " - Starting on $(date) on $(hostname)"
 echo " - command line is: "
 echo " % $comm"
 
 if [ $dry -eq 1 ]; then
-    echo ">> make_mosaic ch@CHAN@ finished in dry mode";    echo ""; exit 1
+	echo " $module finished in dry mode"; exit 1
 fi
 
 # Now do the work
@@ -71,7 +81,7 @@ echo ""
 
 echo ""
 echo "------------------------------------------------------------------"
-echo " >>>>  build_mosaic ch@CHAN@finished on $(date) - walltime: $(wt)  <<<<"
+echo " >>>>  outliers $jobNo finished on $(date) - walltime: $(wt)  <<<<"
 echo "------------------------------------------------------------------"
 echo ""
 exit 0

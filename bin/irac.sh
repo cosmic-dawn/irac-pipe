@@ -795,7 +795,7 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
 
     if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
     ec "#-----------------------------------------------------------------------------"
-    ec "# >>>>  21. Build mosaics - single run, one node per channel  <<<<"
+    ec "# >>>>  15. Build mosaics - single run, one node per channel  <<<<"
     ec "#-----------------------------------------------------------------------------"
     module=build_mosaic
     chk_prev combine_rmasks
@@ -858,7 +858,7 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
 	# mopex logfiles are checked in python function for each chan
 	errfile=$module.err
     grep -i -n -e Error -e Exception -e MALLOC make_mosaic_ch?.out > $errfile
-    grep -n exit make_mosaic_ch?.out | grep -v ' 0' >> $errfile
+    grep -n exit ${module}_ch?.out | grep -v ' 0' >> $errfile
     nerr=$(cat $errfile | wc -l)
 
     if [ $nerr -gt $nsub ]; then
@@ -920,112 +920,130 @@ fi
 
 
 #-----------------------------------------------------------------------------
-### - 21. make tiles (substacks)
+### - 21. make tiles (at native pix scale, to find outliers)
+# 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "make_tiles" ]]     || [ $1 == "mktiles" ]  || [ $auto == "T" ]; then
 
-    module=make_tile
+    if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
+    ec "#-----------------------------------------------------------------------------"
+    ec "# >>>>  21. Build the tiles ... actually find_outliers    <<<<"
+    ec "#-----------------------------------------------------------------------------"
+    module=find_outliers   # for python modules
+	shtmpl=find_outliers_job.sh   # template for sh scripts
     bdate=$(date "+%s.%N")       # start time/date
-    chk_prev setup_tiles
+    chk_prev setup_tiles    
     
-    ec "#-----------------------------------------------------------------------------"
-    ec "# >>>>  21. Build the tiles    <<<<"
-    ec "#-----------------------------------------------------------------------------"
-    
-    rm -f build.tiles make_tile_*.* make_tiles $odir/${PID}.irac.tile.*mosaic*.fits
-    comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
+    rm -f build.outliers outliers_*.sh outliers_*.???  $odir/${PID}.irac.tile.*mosaic*.fits
+	rm -rf $odir/Rmasks/tile* 
+    #comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
         
     # Find number of jobs:
-    parfile=$(grep  '^IRACMosaicConfig '     $pars | cut -d\' -f2)
+    parfile=$(grep  '^IRACOutlierConfig ' $pars | cut -d\' -f2)
     tlf=$(grep '^TileListFile ' $pars | cut -d\' -f2) 
     tlf=$odir/${PID}$tlf 
     njobs=$(cat $tlf | grep $PID | wc -l)
     
-    ec "# Mosaic config file: $parfile"
-    ec "# Mosaic tile list:   $tlf, with $njobs jobs"
+    ec "# outliers config file: $parfile"
+    ec "# outliers tile list:   $tlf, with $njobs jobs"
+	ec "# template for shell scripts is \$bindir/$shtmpl "
     
     for j in $(seq 0 $(($njobs-1))); do
-    #for j in $(seq 22 25); do    # for testing
-        outmodule=${module}_$j.sh
+    #for j in $(seq 2); do    # for testing
+        outmodule=outliers_$j.sh
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
-        sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|"  -e "s|@PID@|$PID|" \
-            -e "s|@JOB@|$j|"   $bindir/${module}.sh > $outmodule
+		nline=$(echo $j | awk {'print $1+5'})
+		Nframs=$(sed "${nline}q;d" $tlf | awk '{print $4}')
+        sed -e "s|@WRK@|"$WRK"|" -e "s|@INFO@|$info|"  -e "s|@PID@|"$PID"|"  \
+		    -e "s|@JOB@|"$j"|" 	$bindir/$shtmpl > $outmodule  
         chmod 755 $outmodule
-        echo "qsub $outmodule; sleep 1" >> build.tiles
+		echo "# Job no. $j has $Nframs frames; wrote $outmodule"
+        echo "qsub $outmodule; sleep 2" >> build.outliers
     done
-    nmod=$(ls ${module}_*.sh | wc -l)
-    nsub=$(cat build.tiles | wc -l)
+	# check modules
+    nmod=$(ls  outliers_*.sh  | wc -l)  # ; echo $nmod
+    nsub=$(cat build.outliers | wc -l)  # ; echo $nsub
     if [ $nsub -eq $njobs ]; then 
-        ec "# wrote $nmod ${module}_nn.sh modules"  # | tee -a $pipelog
+        ec "# Wrote $nmod outliers_nn.sh modules"  # | tee -a $pipelog
     else
-        ec "# wrote only $nmod modules of #njobs expected"
+        ec "# Wrote only $nmod modules of $njobs expected"
         askuser
     fi
     
     if [ $dry == "T" ]; then ec "----  EXITING PIPELINE DRY MODE         ---- "; exit 10; fi
     
     # submit the jobs and begin the wait loop
-    ec "# Submit $nsub ${module}_nn files ... " 
-    source build.tiles | tee submit_tiles.log
-    grep -v master submit_tiles.log   # to look for errors in submission
+    ec "# Submit $nsub outliers_nn files ... " 
+    source build.outliers | tee submit_outliers.log
+    grep -v master submit_outliers.log   # to look for errors in submission
     
-    ec "--  Wait for ${module}_nn to finish  --"; sleep 20
+    ec "--  Wait for outliers_nn to finish  --"; sleep 20
+	n=0 # define loop counter to monitor progress
     while :; do 
-        ndone=$(ls ${module}_*.out 2> /dev/null | wc -l)
+        ndone=$(ls outliers_*.out 2> /dev/null | wc -l)
         [ $ndone -eq $nsub ] && break
+		n=$((n+1))
+		if [ $n -eq 120 ]; then  # 20: check every 10 min; 60 to check every 30 min, etc.
+			echo "$(date "+[%d.%h %H:%M"]): $ndone jobs done; $(($nsub-$ndone)) outstanding"
+			n=0
+		fi
         sleep 30
     done
-    chmod 644 ${module}_*.out
-    
-    ec "# Jobs make_tile_nnn finished - walltime: $(wt)"
+    ec "# Jobs outliers_nn finished - walltime: $(wt)"
+	ec "# PBS/python logs in outliers_nn.out; mopex logs in outliers_nn.log"
+    chmod 644 outliers_*.out
     
     ec "# Check results ..."
     # 1. check torque exit status
-    grep EXIT\ STATUS ${module}_*.out > estats.txt
+    grep EXIT\ STATUS outliers_*.out > estats.txt
     nbad=$(grep -v STATUS:\ 0  estats.txt | wc -l)      # files w/ status != 0
     if [ $nbad -gt 0 ]; then
-        ec "PROBLEM: some ${module}_nn.sh exit status not 0: "
+        ec "PROBLEM: some outliers_nn.sh exit status not 0: "
         grep -v STATUS:\ 0 estats.txt ; askuser
     else
         ec "# ==> torque exit status ok;"; rm -f estats.txt
     fi
+
     # 2. Check .out files for incomplete processing
-    grep PROBLEM  ${module}_*.out > make_tiles.pbs
-    npbs=$(cat make_tiles.pbs | wc -l)
+    grep PROBLEM  outliers_*.out > outliers.pbs
+    npbs=$(cat outliers.pbs | wc -l)
     nmos=$(ls $odir/$PID.irac.tile.*.mosaic.fits | wc -l)
     if [ $npbs -ne 0 ]; then
-        ec "PROBLEM: found $npbs jobs that did not build all expected outputs - see make_tiles.pbs"
-        head make_tiles.pbs             
+        ec "PROBLEM: found $npbs jobs that did not build all expected outputs - see outliers.pbs"
+        head outliers.pbs             
     fi
     
     # 3. check .log files (from mopex) for other errors
-    errfile=${module}s.err
-    grep -i -n -e Error -e Exception -e MALLOC ${module}_*.log > $errfile
-    grep ^System\ Exit  ${module}_*.log | grep -v ' 0' >> $errfile
+    errfile=outliers.errs
+	# Need to compesate for "allowed" errors in mosaic_combine (last mopex pipeline step with mem leak)
+    grep -i -n -e Error -e Exception -e MALLOC outliers_*.log | grep -v -e mosaic_combine -e fsts > $errfile
+    grep ^System\ Exit  outliers_*.log | grep -v ' 0' | grep -v mosaic_combine >> $errfile
     nerr=$(cat $errfile | wc -l)
     if [ $nerr -gt 0 ]; then
         ec "ATTN: found $nerr errors in .log files ... check file $errfile"
     else
-        ec "# ==> no other errors found ... mv make_tile_*.* to make_tiles dir "
+        ec "# ==> no other errors found ... mv make_tile_*.* to outliers dir "
         rm -f $errfile 
     fi
     
     # 4. check that all products are built
     nprods=$(ls $odir/$PID.irac.tile.*mosaic*.fits | wc -l)
-    if [ $nmos -eq $nsub ]; then
+	nexp=$(($nsub*6))
+	if [ $nprods -eq $nexp ]; then
         ec "# All jobs build all expected outputs: "
-        ec "# Found all $nmos expected tiles, and all $nprods expected products"
-        rm -f make_tiles.pbs
+        ec "# Found all $nmos expected mosaic tiles, and all ancillary products"
+        rm -f outliers.psb
     else
         ec "ATTN: Found only $nmos tiles of $nsub expected ..."
     fi
     
-    mkdir make_tiles
-    mv make_tile_*.* build.tiles submit_tiles.log make_tiles.* make_tiles
-    rm addkeyword.txt
+    mkdir outliers_par.logfiles
+    mv outliers_*.?? outliers_*.???  submit_outliers.log  outliers_par.logfiles
+    rm addkeyword.txt build.outliers
     
     end_step
+	exit 0
 fi
 
 #-----------------------------------------------------------------------------
