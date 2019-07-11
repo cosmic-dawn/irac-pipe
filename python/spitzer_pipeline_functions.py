@@ -1202,6 +1202,7 @@ def find_outlier_tile(JobNo, JobList, debug):
 
     Ch = JobList['Channel'][JobNo]
     Tile = JobList['TileNumber'][JobNo]
+    Nframes = JobList['NumFrames'][JobNo]
     
     # temporary files: use local scratch area on process node, if large, to avoid heavy network usage
     processTMPDIR = "{:}tmpdir_{:}_tile_j{:d}".format(scratch_dir_prefix(cluster), PIDname, JobNo)    
@@ -1214,7 +1215,7 @@ def find_outlier_tile(JobNo, JobList, debug):
         print("## ERROR: could not create temp dir {:} .... quitting".format(processTMPDIR))
         sys.exit(3)
     
-    print("## Begin find_outliers job {:} for tile {:}, chan {:}; tmpdir is {:}".format(JobNo, Tile, Ch, processTMPDIR))
+    print("## Begin find_outliers job {:} for tile {:}, chan {:}, {:} frames ; tmpdir is {:}".format(JobNo, Tile, Ch, Nframes,  processTMPDIR))
 
     #input lists
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
@@ -1230,7 +1231,7 @@ def find_outlier_tile(JobNo, JobList, debug):
     print("   "+cmd)
     os.system(cmd)
     
-    # mopex work down, now copy the files to their proper places in the $WRK
+    # mopex work done, now copy the files to their proper places in the $WRK
     basename = "{:}{:}.irac.tile.{:}.{:}".format(OutputDIR, PIDname, Tile, Ch)
     print(">> Products root name: {:}".format(basename))
     cperrs = 0  # to keep track of errors
@@ -1239,28 +1240,28 @@ def find_outlier_tile(JobNo, JobList, debug):
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits',mosaic)
     except:
-        print("##ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
+        print("## ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
         cperrs = 1
     
     mosaicunc = basename + '.mosaic_unc.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
     except:
-        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_unc.fits not found")
+        print("## ERROR: TMPDIR/Combine-mosaic/mosaic_unc.fits not found")
         cperrs = 1
 
     mosaiccov = basename + '.mosaic_cov.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
     except:
-        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_cov.fits not found")
+        print("## ERROR: TMPDIR/Combine-mosaic/mosaic_cov.fits not found")
         cperrs = 1
     
     mosaicstd = basename + '.mosaic_std.fits'
     try:
         shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
     except:
-        print("##ERROR: TMPDIR/Combine-mosaic/mosaic_std.fits not found")
+        print("## ERROR: TMPDIR/Combine-mosaic/mosaic_std.fits not found")
         cperrs = 1
 
     if cperrs == 1:

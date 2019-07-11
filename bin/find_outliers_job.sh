@@ -3,7 +3,7 @@
 #PBS -N ols_@PID@_@JOB@
 #PBS -o outliers_@JOB@.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=11,walltime=18:00:00
+#PBS -l nodes=1:ppn=11,walltime=24:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     find_outliers_job.sh @INFO@
