@@ -3,7 +3,7 @@
 #PBS -N ols_@PID@_@JOB@
 #PBS -o outliers_@JOB@.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=11,walltime=24:00:00
+#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     find_outliers_job.sh @INFO@
@@ -17,7 +17,7 @@ mycd() { if [ -d $1 ]; then \cd $1; echo " --> $PWD";
     else echo "!! ERROR: $1 does not exit ... quitting"; exit 5; fi; }
 
 wt() { echo "$(date "+%s.%N") $bdate" | \
-	awk '{printf "%0.2f hrs\n", ($1-$2)/3600}'; }  # wall time
+    awk '{printf "%0.2f hrs\n", ($1-$2)/3600}'; }  # wall time
 
 # load needed softs and set paths
 
@@ -40,16 +40,16 @@ if [[ "$0" =~ "$module" ]]; then
         exit 5
     else
         if [ $1 == 'dry' ]; then echo "ERROR: Must give a job number"
-			exit 5
+            exit 5
         else
-			jobNo=$1
+            jobNo=$1
         fi
     fi
     if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi
 else
     echo "## This is ${module}.sh: running via qsub on $node"
     WRK=@WRK@   # data are here
-	jobNo=@JOB@
+    jobNo=@JOB@
     dry=0
 fi
 
@@ -68,7 +68,7 @@ echo " - command line is: "
 echo " % $comm"
 
 if [ $dry -eq 1 ]; then
-	echo " $module finished in dry mode"; exit 1
+    echo " $module finished in dry mode"; exit 1
 fi
 
 # Now do the work

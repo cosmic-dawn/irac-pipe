@@ -3,7 +3,7 @@
 #PBS -N astrom_@PID@
 #PBS -o fix_astrometry.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=@WTIME@
+#PBS -l nodes=1:ppn=@NPROC@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     fix_astrometry.sh @INFO@

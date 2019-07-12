@@ -3,7 +3,7 @@
 #PBS -N mosaics_@PID@
 #PBS -o make_mosaics.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=24:00:00
+#PBS -l nodes=1:ppn=@NPROC@,walltime=24:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     make_mosaics.sh @INFO@

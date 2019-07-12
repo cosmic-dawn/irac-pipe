@@ -739,11 +739,14 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
         Ntile=$(sed "${nline}q;d" $tlf | awk '{print $2}')
         NChan=$(sed "${nline}q;d" $tlf | awk '{print $3}')
         Nfram=$(sed "${nline}q;d" $tlf | awk '{print $4}')
+        wtime=$((5+$Nfram/2300)):00:00
+		ppn=$((5+$Nfram/6000))
         sed -e "s|@WRK@|"$WRK"|" -e "s|@INFO@|$info|"  -e "s|@PID@|"$PID"|"  \
-            -e "s|@JOB@|"$j"|"  $bindir/$shtmpl > $outmodule  
+            -e "s|@JOB@|"$j"|"   -e "s|@PPN@|$ppn|"  -e "s|@WTIME@|$wtime|"  \
+			$bindir/$shtmpl > $outmodule  
         chmod 755 $outmodule
-        echo " $outmodule $j $Ntile $NChan $Nfram" | \
-            awk '{printf "# Wrote %-15s for job %3d: tile %2d ch %1d with %5d frames\n", $1,$2,$3,$4,$5}' | \
+        echo " $j $Ntile $NChan $Nfram $outmodule $ppn $wtime " | \
+            awk '{printf "# job %3d for tile %2d ch %1d with %5d frames ==> %-15s with %2d ppn, wt %2d hr\n", $1,$2,$3,$4,$5,$6,$7}' | \
             tee -a outliers.info
         echo "qsub $outmodule; sleep 2" >> run.outliers
     done
@@ -783,8 +786,8 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
         fi
         sleep 30
     done
-    ec "# Jobs outliers_nn finished - walltime: $(wt)"
-    ec "# PBS/python logs in outliers_nn.out; mopex logs in outliers_nn.log"
+    ec "# Jobs outliers_nn finished - unix walltime: $(wt)"
+    ec "# pbs logs in outliers_nn.out; mopex logs in outliers_nn.log"
     chmod 644 outliers_*.out
     
     ec "# Check results ..."
@@ -887,29 +890,34 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     bdate=$(date "+%s.%N")       # start time/date
     
     rm -f build.qall ${module}_ch?.out
-    ecn "# From supermopex: namelist for make_mosaic mosaics is: "
-    grep ^IRACMosaicConfig supermopex.py | cut -d\'  -f2,2
+    ec "# From supermopex: namelist for make_mosaic mosaics is: $(grep ^IRACMosaicConfig supermopex.py | cut -d\'  -f2,2)"
 
     chans=$(cut -d\  -f2 $odir/$ltab | grep 0000_0000 | sed 's|automnt/||' | cut -d\/ -f6 | sort -u | cut -c3,4)
-    ecn "# Found channels: "; for c in $chans; do echo -n "$c "; done; echo "" #   ; exit
+    ecn "# Found channels: $(for c in $chans; do echo -n "$c "; done) "; echo '' | tee -a $pipelog #   ; exit
 
     # build local qsub scripts
     for chan in $chans; do
         outmodule=${module}_ch${chan}.sh
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
-        ChanFrames=$(grep _I${chan}_ $odir/$ltab | wc -l)
-        wtime=$((1+$ChanFrames/2000)):00:00
-        ecn "# Chan $chan has $ChanFrames frames; set PBS walltime to $wtime ..."
+        Nfram=$(grep _I${chan}_ $odir/$ltab | wc -l)
+        wtime=$((5+$Nfram/2100)):00:00
+		#if [ $chan -le 2 ]; then ppn=46; else ppn=30; fi
+        #ppn=$((24+$Nfram/8500))
+		if [ $Nfram -ge 25000 ]; then ppn=46; else ppn=30; fi
+        #ec "# Chan $chan has $Nfram frames ==> set ppn=$ppn, PBS walltime to $wtime ..."
         sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|" -e "s|@PID@|$PID|"  -e "s|@CHAN@|$chan|"  \
-            -e "s|@WTIME@|$wtime|"  $bindir/${module}.sh > ./$outmodule
-        NF=$(grep in\ Ch${chan} irac.log | tr -s \  | cut -d\  -f7)  # N frames this ch.
-        if [ $NF -gt 40000 ]; then sed -i 's/time=48/time=600/' $outmodule; fi
+            -e "s|@WTIME@|$wtime|" -e "s|@PPN@|$ppn|"  $bindir/${module}.sh > ./$outmodule
+        #NF=$(grep in\ Ch${chan} irac.log | tr -s \  | cut -d\  -f7)  # N frames this ch.
+        #if [ $NF -gt 40000 ]; then sed -i 's/time=48/time=600/' $outmodule; fi
         chmod 755 $outmodule
-        echo " wrote $outmodule" 
+		echo " $chan  $Nfram $outmodule $ppn $wtime" | \
+			awk '{printf "# Ch%d with %6d frames ==> %s with %2d ppn, wt %2d hr\n", $1,$2,$3,$4,$5}' | \
+            tee -a outliers.info
+        #ec " wrote $outmodule" 
         echo "qsub $outmodule; sleep 1" >> build.qall
     done
     if [ $dry == "T" ]; then ec "----  EXITING PIPELINE DRY MODE     ---- "; exit 10; fi
-    
+
     nsub=$(cat build.qall | wc -l)
     ec "# Submit $nsub ${module}_ch? files ... "; source build.qall #| tee -a $pipelog
     

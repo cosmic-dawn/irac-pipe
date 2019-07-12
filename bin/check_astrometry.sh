@@ -3,7 +3,7 @@
 #PBS -N chkastr_@PID@
 #PBS -o check_astrometry.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=48:00:00
+#PBS -l nodes=1:ppn=@NPROC@,walltime=48:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     check_astrometry.sh @INFO@

@@ -1182,7 +1182,7 @@ def run_mosaic_geometry(JobNo,JobList):
     num_files = sum(1 for line in open(geomlist))
 
     #copy geomlist
-    outName = '{:}{:}.irac.{:}.{:}.{:}.lst'.format(OutputDIR, PIDname, Tile, Ch, SubtractedSuffix)
+    outName = '{:}{:}.irac.tile.{:}.{:}.{:}.lst'.format(OutputDIR, PIDname, Tile, Ch, SubtractedSuffix)
     print("copy {:} to {:}".format(geomlist, outName))
     shutil.copy(geomlist, outName)
     

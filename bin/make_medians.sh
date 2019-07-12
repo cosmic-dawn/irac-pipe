@@ -3,7 +3,7 @@
 #PBS -N medians_@PID@
 #PBS -o make_medians.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=48:00:00
+#PBS -l nodes=1:ppn=@NPROC@,walltime=48:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     make_medians.sh @INFO@

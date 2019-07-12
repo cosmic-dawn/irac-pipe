@@ -3,7 +3,7 @@
 #PBS -N preTiles_@PID@
 #PBS -o setup_tiles.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=24:00:00
+#PBS -l nodes=1:ppn=@NPROC@,walltime=24:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     setup_tiles.sh @INFO@

@@ -3,7 +3,7 @@
 #PBS -N outliers_@PID@
 #PBS -o find_outliers.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=@NPROC@,walltime=@WTIME@
+#PBS -l nodes=1:ppn=@NPROC@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     find_outliers.sh @INFO@

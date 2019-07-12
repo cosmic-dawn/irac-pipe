@@ -3,7 +3,7 @@
 #PBS -N mos_ch@CHAN@_@PID@
 #PBS -o build_mosaic_ch@CHAN@.out
 #PBS -j oe
-#PBS -l nodes=1:node48cores:ppn=46,walltime=@WTIME@
+#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     build_mosaic.sh @INFO@
