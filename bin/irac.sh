@@ -713,12 +713,12 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     ec "# >>>>  21. Build the tiles ... actually find_outliers    <<<<"
     ec "#-----------------------------------------------------------------------------"
     module=find_outliers   # for python modules
-	shtmpl=find_outliers_job.sh   # template for sh scripts
+    shtmpl=find_outliers_job.sh   # template for sh scripts
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev setup_tiles    
     
     rm -f run.outliers outliers.info outliers_*.sh outliers_*.??? 
-	rm -rf $odir/Rmasks/tile*  $odir/${PID}.irac.tile.*mosaic*.fits
+    rm -rf $odir/Rmasks/tile*  $odir/${PID}.irac.tile.*mosaic*.fits
     #comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
         
     # Find number of jobs:
@@ -729,25 +729,25 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     
     ec "# outliers config file: $parfile"
     ec "# outliers tile list:   $tlf, with $njobs jobs"
-	ec "# template for shell scripts is \$bindir/$shtmpl "
+    ec "# template for shell scripts is \$bindir/$shtmpl "
     
     for j in $(seq 0 $(($njobs-1))); do
     #for j in $(seq 2); do    # for testing
         outmodule=outliers_$j.sh
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
-		nline=$(echo $j | awk {'print $1+5'})
-		Ntile=$(sed "${nline}q;d" $tlf | awk '{print $2}')
-		NChan=$(sed "${nline}q;d" $tlf | awk '{print $3}')
-		Nfram=$(sed "${nline}q;d" $tlf | awk '{print $4}')
+        nline=$(echo $j | awk {'print $1+5'})
+        Ntile=$(sed "${nline}q;d" $tlf | awk '{print $2}')
+        NChan=$(sed "${nline}q;d" $tlf | awk '{print $3}')
+        Nfram=$(sed "${nline}q;d" $tlf | awk '{print $4}')
         sed -e "s|@WRK@|"$WRK"|" -e "s|@INFO@|$info|"  -e "s|@PID@|"$PID"|"  \
-		    -e "s|@JOB@|"$j"|" 	$bindir/$shtmpl > $outmodule  
+            -e "s|@JOB@|"$j"|"  $bindir/$shtmpl > $outmodule  
         chmod 755 $outmodule
-		echo " $outmodule $j $Ntile $NChan $Nfram" | \
-			awk '{printf "# Wrote %-15s for job %3d: tile %2d ch %1d with %5d frames\n", $1,$2,$3,$4,$5}' | \
-		    tee -a outliers.info
+        echo " $outmodule $j $Ntile $NChan $Nfram" | \
+            awk '{printf "# Wrote %-15s for job %3d: tile %2d ch %1d with %5d frames\n", $1,$2,$3,$4,$5}' | \
+            tee -a outliers.info
         echo "qsub $outmodule; sleep 2" >> run.outliers
     done
-	# check modules
+    # check modules
     nmod=$(ls  outliers_*.sh  | wc -l)  # ; echo $nmod
     nsub=$(cat run.outliers | wc -l)  # ; echo $nsub
     if [ $nsub -eq $njobs ]; then 
@@ -762,28 +762,29 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     # submit the jobs and begin the wait loop
     ec "# Submit $nsub outliers_nn files ... " 
     source run.outliers | tee submit_outliers.log
-    errs=$(grep -v master submit_outliers.log)   # to look for errors in submission
-	nerr=$(cat submit_outliers.log | wc -l)
-	if [ $nerr -ge 1 ]; then 
-		ec "# WARNING: there are some submission errors - check submit_outliers.log ... continuing"
-	else
-		ec "# All jobs submitted ok ..."
-	fi
+    grep -v master submit_outliers.log > submit.errs   # to look for errors in submission
+    nerr=$(cat submit.errs | wc -l)
+    if [ $nerr -ge 1 ]; then 
+        ec "# WARNING: there are some submission errors - check submit_outliers.log ... continuing"
+    else
+        ec "# All jobs submitted ok ..."
+        rm submit.errs
+    fi
     
     ec "--  Wait for all outliers_nn to finish  --"; sleep 20
-	n=0 # define loop counter to monitor progress
+    n=0 # define loop counter to monitor progress
     while :; do 
         ndone=$(ls outliers_*.out 2> /dev/null | wc -l)
         [ $ndone -eq $nsub ] && break
-		n=$((n+1))
-		if [ $n -eq 120 ]; then  # 20: check every 10 min; 60 to check every 30 min, etc.
-			echo "$(date "+[%d.%h %H:%M"]): $ndone jobs done; $(($nsub-$ndone)) outstanding"
-			n=0
-		fi
+        n=$((n+1))
+        if [ $n -eq 120 ]; then  # 20: check every 10 min; 60 to check every 30 min, etc.
+            echo "$(date "+[%d.%h %H:%M"]): $ndone jobs done; $(($nsub-$ndone)) outstanding"
+            n=0
+        fi
         sleep 30
     done
     ec "# Jobs outliers_nn finished - walltime: $(wt)"
-	ec "# PBS/python logs in outliers_nn.out; mopex logs in outliers_nn.log"
+    ec "# PBS/python logs in outliers_nn.out; mopex logs in outliers_nn.log"
     chmod 644 outliers_*.out
     
     ec "# Check results ..."
@@ -803,12 +804,14 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     nmos=$(ls $odir/$PID.irac.tile.*.mosaic.fits | wc -l)
     if [ $npbs -ne 0 ]; then
         ec "PROBLEM: found $npbs jobs that did not build all expected outputs - see outliers.pbs"
-        head outliers.pbs             
+        head outliers.pbs
+    else
+        rm outliers.pbs
     fi
     
     # 3. check .log files (from mopex) for other errors
     errfile=outliers.errs
-	# Need to compesate for "allowed" errors in mosaic_combine (last mopex pipeline step with mem leak)
+    # Need to compesate for "allowed" errors in mosaic_combine (last mopex pipeline step with mem leak)
     grep -i -n -e Error -e Exception -e MALLOC outliers_*.log | grep -v -e mosaic_combine -e fsts > $errfile
     grep ^System\ Exit  outliers_*.log | grep -v ' 0' | grep -v mosaic_combine >> $errfile
     nerr=$(cat $errfile | wc -l)
@@ -821,8 +824,8 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     
     # 4. check that all products are built
     nprods=$(ls $odir/$PID.irac.tile.*mosaic*.fits | wc -l)
-	nexp=$(($nsub*6))
-	if [ $nprods -eq $nexp ]; then
+    nexp=$(($nsub*6))
+    if [ $nprods -eq $nexp ]; then
         ec "# All jobs build all expected outputs: "
         ec "# Found all $nmos expected mosaic tiles, and all ancillary products"
         rm -f outliers.psb
@@ -835,7 +838,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     rm addkeyword.txt run.outliers
     
     end_step
-	exit 0
+fi
 
 
 #-----------------------------------------------------------------------------
@@ -894,9 +897,9 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     for chan in $chans; do
         outmodule=${module}_ch${chan}.sh
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
-		ChanFrames=$(grep _I${chan}_ $odir/$ltab | wc -l)
-		wtime=$((1+$ChanFrames/2000)):00:00
-		ecn "# Chan $chan has $ChanFrames frames; set PBS walltime to $wtime ..."
+        ChanFrames=$(grep _I${chan}_ $odir/$ltab | wc -l)
+        wtime=$((1+$ChanFrames/2000)):00:00
+        ecn "# Chan $chan has $ChanFrames frames; set PBS walltime to $wtime ..."
         sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|" -e "s|@PID@|$PID|"  -e "s|@CHAN@|$chan|"  \
             -e "s|@WTIME@|$wtime|"  $bindir/${module}.sh > ./$outmodule
         NF=$(grep in\ Ch${chan} irac.log | tr -s \  | cut -d\  -f7)  # N frames this ch.
@@ -935,9 +938,9 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     fi
     
     # 2. check .out file for other errors (python)
-	# mopex logfiles are checked in python function for each chan
-	errfile=$module.err
-    grep -i -n -e Error -e Exception -e MALLOC make_mosaic_ch?.out > $errfile
+    # mopex logfiles are checked in python function for each chan
+    errfile=$module.err
+    grep -i -n -e Error -e Exception -e MALLOC build_mosaic_ch?.out > $errfile
     grep -n exit ${module}_ch?.out | grep -v ' 0' >> $errfile
     nerr=$(cat $errfile | wc -l)
 
@@ -1023,33 +1026,33 @@ if [[ $1 =~ "find_outliers_single" ]] || [[ $1 =~ "outlisingle" ]] || [ $auto ==
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
 
-	# outliers_*.log are from mopex - look for mopex errors.  First, last line of should be
-	# "Wrapper-script mosaic.pl terminated normally", if not ... then there is a problem
-	for f in out*.log; do echo -n "$f  ";  tail -5 $f | strings | tail -1 ; done | grep -v Wrapper > outliers.failed
-	nerr=$(cat outliers.failed | wc -l)
-	if [ $nerr -ge 1 ]; then
-		ec "# the following jobs did not termainate normally:"
-		cat outliers.failed
-		# Look for known erros in failed outliers_*.log
-		rm -f $module.errs
-		for l in $(cut -d\  -f1 outliers.failed); do
-			echo "-- in $l" >> $modules.errs
-			grep -n -e MALLOC -e Err -e Warning -e uninitialized\ value $ll >> $module.errs
-		done
-		ec "# Known errors in $module.errs"
-		askuser
-	else
-		ec "# All find_outliers jobs terminated normally (mopex dixit)"
-		rm outliers.errs
-	fi
+    # outliers_*.log are from mopex - look for mopex errors.  First, last line of should be
+    # "Wrapper-script mosaic.pl terminated normally", if not ... then there is a problem
+    for f in out*.log; do echo -n "$f  ";  tail -5 $f | strings | tail -1 ; done | grep -v Wrapper > outliers.failed
+    nerr=$(cat outliers.failed | wc -l)
+    if [ $nerr -ge 1 ]; then
+        ec "# the following jobs did not termainate normally:"
+        cat outliers.failed
+        # Look for known erros in failed outliers_*.log
+        rm -f $module.errs
+        for l in $(cut -d\  -f1 outliers.failed); do
+            echo "-- in $l" >> $modules.errs
+            grep -n -e MALLOC -e Err -e Warning -e uninitialized\ value $ll >> $module.errs
+        done
+        ec "# Known errors in $module.errs"
+        askuser
+    else
+        ec "# All find_outliers jobs terminated normally (mopex dixit)"
+        rm outliers.errs
+    fi
 
     grep -n -e MALLOC -e Err -e Warning -e uninitialized\ value outliers_*.log > $module.errs
     nerr=$(cat $module.errs | wc -l)
     if [ $nerr -ge 1 ]; then
         ec "# Found $nerr errors in logfiles - see make_tile.errs"
         askuser
-	else
-		rm $module.errs
+    else
+        rm $module.errs
     fi
     
     # put away logfiles
@@ -1058,10 +1061,10 @@ if [[ $1 =~ "find_outliers_single" ]] || [[ $1 =~ "outlisingle" ]] || [ $auto ==
 
     end_step
 fi
-fi
+
 
 #-----------------------------------------------------------------------------
-### - 22. combine tiles into mosaics (swarp)
+### - 23. combine tiles into mosaics (swarp)
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "combine_tiles" ]]  || [ $1 == "combTiles" ] || [ $auto == "T" ]; then

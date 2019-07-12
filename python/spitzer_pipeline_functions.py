@@ -1159,6 +1159,7 @@ def make_median_image(JobNo, JobList, log, AORlog, debug):
 def run_mosaic_geometry(JobNo,JobList):
     
     Ch = JobList['Channel'][JobNo]
+    Tile = JobList['TileNumber'][JobNo]
     
     #temporary files
     pid = os.getpid() #get the PID for temp files
@@ -1179,10 +1180,15 @@ def run_mosaic_geometry(JobNo,JobList):
     
     #count the number of files in mosaic geometry
     num_files = sum(1 for line in open(geomlist))
+
+    #copy geomlist
+    outName = '{:}{:}.irac.{:}.{:}.{:}.lst'.format(OutputDIR, PIDname, Tile, Ch, SubtractedSuffix)
+    print("copy {:} to {:}".format(geomlist, outName))
+    shutil.copy(geomlist, outName)
     
     #clean up
-    logfileCMD = 'ls -lh ' + logfile
-    os.system(logfileCMD)
+    #logfileCMD = 'ls -lh ' + logfile
+    #os.system(logfileCMD)
     
     cleanupCMD = 'rm -rf ' + processTMPDIR
     print(cleanupCMD)
