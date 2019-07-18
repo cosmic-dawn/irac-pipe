@@ -39,6 +39,7 @@ if [[ "$0" =~ "$module" ]]; then
 else
     echo "## This is ${module}.sh: running via qsub on $node"
     WRK=@WRK@   # data are here
+	chan=@CHAN@
     dry=0
 fi
 
@@ -53,12 +54,12 @@ Nthred=$(grep '^Nthred' supermopex.py | tr -s ' ' | cut -d\  -f3)
 comm="python make_mosaics_function.py @CHAN@"
 
 echo " - Work dir is:  $WRK"
-echo " - Starting on $(date) on $(hostname) with @NTHRED@ threads"
+echo " - Starting on $(date) on $(hostname) with $Nthred threads"
 echo " - command line is: "
 echo " % $comm"
 
 if [ $dry -eq 1 ]; then
-    echo ">> make_mosaic ch@CHAN@ finished in dry mode";    echo ""; exit 1
+    echo ">> build_mosaic ch@CHAN@ finished in dry mode";    echo ""; exit 1
 fi
 
 # Now do the work
@@ -69,9 +70,20 @@ $comm
 echo ">> ==========   End python output   ========== "
 echo ""
 
+# check mopex logfile for proper termination
+logfile=build_mosaic_ch@CHAN@.log
+fin=$(tail -1 $logfile)
+if [ $(echo $fin | grep terminated\ normally | wc -l) -eq 1 ]; then
+	echo ">> $fin"
+	errcode=0
+else
+	echo ">> WARNING: abnormal termination of mopex.pl ... check $logfile"
+	errcode=3
+fi
+
 echo ""
 echo "------------------------------------------------------------------"
-echo " >>>>  build_mosaic ch@CHAN@finished on $(date) - walltime: $(wt)  <<<<"
+echo " >>>>  build_mosaic ch@CHAN@ finished on $(date) - walltime: $(wt)  <<<<"
 echo "------------------------------------------------------------------"
 echo ""
-exit 0
+exit $errcode

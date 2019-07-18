@@ -79,6 +79,17 @@ $comm
 echo ">> ==========   End python output   ========== "
 echo ""
 
+# check mopex logfile for proper termination
+logfile=outliers_@JOB@.log
+fin=$(tail -1 $logfile)
+if [ $(echo $fin | grep terminated\ normally | wc -l) -eq 1 ]; then
+	echo ">> $fin"
+	errcode=0
+else
+	echo ">> WARNING: abnormal termination of mopex.pl ... check $logfile"
+	errcode=3
+fi
+
 echo ""
 echo "------------------------------------------------------------------"
 echo " >>>>  outliers $jobNo finished on $(date) - walltime: $(wt)  <<<<"

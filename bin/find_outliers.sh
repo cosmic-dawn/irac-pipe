@@ -3,7 +3,7 @@
 #PBS -N outliers_@PID@
 #PBS -o find_outliers.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=@NPROC@,walltime=@WTIME@
+#PBS -l nodes=1:ppn=@NPPN@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     find_outliers.sh @INFO@
@@ -37,7 +37,7 @@ if [[ "$0" =~ "$module" ]]; then
     echo "## This is ${module}.sh: running as shell script on $node"
     if [[ "${@: -1}" == 'dry' ]]; then dry=1; else dry=0; fi
 else
-    echo "## This is ${module}.sh: running via qsub on $node"
+    echo "## This is ${module}.sh: running via qsub on $node with @PPN@ threads"
     WRK=@WRK@   # data are here
     dry=0
 fi

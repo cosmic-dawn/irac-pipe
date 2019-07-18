@@ -47,12 +47,13 @@ fi
 #-----------------------------------------------------------------------------
 
 mycd $WRK
+Nthred=$(grep '^Nthred' supermopex.py | tr -s ' ' | cut -d\  -f3)
 
 # Build the command line
 comm="python $module.py"
 
 echo " - Work dir is:  $WRK"
-echo " - Command is: $comm"
+echo " - Job running on $node with $Nthred threads"
 echo " - Starting on $(date) on $(hostname)"
 echo " - command line is: "
 echo " % $comm"

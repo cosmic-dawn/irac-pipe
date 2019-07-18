@@ -35,8 +35,7 @@ def scratch_dir_prefix(cluster):
         if (locnode == 'n03') or (locnode == 'n04') or (locnode == 'n05') or (locnode == 'n06') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
             processTMPDIRprefix = '/' + locnode + 'data/'
         else:
-            processTMPDIRprefix = '/scratch/'
-#        print(">> DEBUG: For local node {:} TMPDIR prefix is {:}".format(locnode,  processTMPDIRprefix))
+            processTMPDIRprefix = '/scratch{:}/'.format(locnode[1:3])
     else:
         processTMPDIRprefix = TMPDIR + '/'
     
@@ -1173,7 +1172,7 @@ def run_mosaic_geometry(JobNo,JobList):
     geomlist = processTMPDIR + 'geom_' + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     
     #Run Mosaic
-    logfile = processTMPDIR + 'setup_tiles_job'+str(JobNo)+'.log'
+    logfile = '{:}setup_tiles_{:}.log'.format(processTMPDIR, JobNo)
     cmd = 'mosaic.pl -n ' +IRACTileGeomConfig+ ' -I ' +imagelist+ ' -F' +JobList['FIF'][JobNo]+ ' -O ' +processTMPDIR+ ' > '+logfile+' 2>&1'
     print(cmd)
     os.system(cmd)
@@ -1181,10 +1180,14 @@ def run_mosaic_geometry(JobNo,JobList):
     #count the number of files in mosaic geometry
     num_files = sum(1 for line in open(geomlist))
 
-    #copy geomlist
+    # AMo: copy geomlist to OutputDIR
     outName = '{:}{:}.irac.tile.{:}.{:}.{:}.lst'.format(OutputDIR, PIDname, Tile, Ch, SubtractedSuffix)
     print("copy {:} to {:}".format(geomlist, outName))
     shutil.copy(geomlist, outName)
+    # AMo: copy logfile to tempDIR, prepend command
+    outname = '{:}setup_tiles_{:}.log'.format(TMPDIR, JobNo)
+#    os.system("echo {:} > ${:}; echo '=================' >> {:}".format(cmd, logfile, logfile)
+    shutil.copy(logfile, outname)
     
     #clean up
     #logfileCMD = 'ls -lh ' + logfile
@@ -1237,46 +1240,51 @@ def find_outlier_tile(JobNo, JobList, debug):
     print("   "+cmd)
     os.system(cmd)
     
+    #-----------------------------------------------------------------------------
     # mopex work done, now copy the files to their proper places in the $WRK
+    #-----------------------------------------------------------------------------
     basename = "{:}{:}.irac.tile.{:}.{:}".format(OutputDIR, PIDname, Tile, Ch)
     print(">> Products root name: {:}".format(basename))
     cperrs = 0  # to keep track of errors
 
-    mosaic = basename + '.mosaic.fits'
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits',mosaic)
-    except:
-        print("## ERROR: TMPDIR/Combine-mosaic/mosaic.fits not found")
-        cperrs = 1
-    
-    mosaicunc = basename + '.mosaic_unc.fits'
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
-    except:
-        print("## ERROR: TMPDIR/Combine-mosaic/mosaic_unc.fits not found")
-        cperrs = 1
-
-    mosaiccov = basename + '.mosaic_cov.fits'
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
-    except:
-        print("## ERROR: TMPDIR/Combine-mosaic/mosaic_cov.fits not found")
-        cperrs = 1
-    
-    mosaicstd = basename + '.mosaic_std.fits'
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
-    except:
-        print("## ERROR: TMPDIR/Combine-mosaic/mosaic_std.fits not found")
-        cperrs = 1
-
-    if cperrs == 1:
-        print(" ## ERROR in find_outliers job {:} ... see {:} for details".format(JobNo, logfile))
-        sys.exit(3)
+    inf = processTMPDIR + '/Combine-mosaic/mosaic.fits'; 
+    out = basename + '.mosaic.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
     else:
-        print(">> Copied  {:}.mosaic*.fits".format(basename))
+        print("## ERROR: {:} not found".format(inf)); cperrs += 1
+    
+    inf = processTMPDIR + '/Combine-mosaic/mosaic_unc.fits'
+    out = basename + '.mosaic_unc.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs += 1
 
-    # move the output RMASKS to an area so they can be combined; must do in loop as may be too many for unix wildcard
+    inf = processTMPDIR + '/Combine-mosaic/mosaic_cov.fits'
+    out = basename + '.mosaic_cov.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs += 1
+    
+    inf = processTMPDIR + '/Combine-mosaic/mosaic_std.fits'
+    out = basename + '.mosaic_std.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs += 1
+
+#    if cperrs == 1:
+#        print(" ## ERROR in find_outliers job {:} ... see {:} for details".format(JobNo, logfile))
+#    else:
+#        print(">> Copied  {:}.mosaic*.fits to {:}".format(basename, OutputDIR))
+
+    #-----------------------------------------------------------------------------
+    # move the output rmasks to RMaskDir when they can be combined; 
+    # must do in loop as may be too many for unix wildcard; use copy, not move, as
+    # latter fails when working across filesystems
+    #-----------------------------------------------------------------------------
     RMaskOutdir = RMaskDir + 'tile_{:}/'.format(Tile)
     os.system('mkdir -p ' + RMaskOutdir)
 
@@ -1292,34 +1300,45 @@ def find_outlier_tile(JobNo, JobList, debug):
             fin = line.strip('\n')
             fout = fin.split('/')[-1]
             if debug == 1: print("DEBUG: shutil.copy({:}, {:})".format(fin, RMaskOutdir+fout))
-            #os.rename(fin, RMaskOutdir+fout)
-            shutil.copy(fin, RMaskOutdir+fout)
+            shutil.copy(fin, RMaskOutdir + fout)
             nmoved += 1
-    print(">> Copied {:} rmask files from {:} to {:}".format(nmoved, RMaskImages, RMaskOutdir))
+    if (nmoved == 0):
+        print("## ERROR: Found no rmask files for tile {:}, chan {:}".format(Tile, Ch))
+        cperrs += 1
+    else:
+        print(">> Copied {:} rmask files from {:} to {:}".format(nmoved, RMaskImages, RMaskOutdir))
+    os.system("rm " + fileList) 
 
+    #-----------------------------------------------------------------------------
     # cp the median_mosaic products to the output dir
-    medmosaic = basename  + '.median_mosaic.fits'
-    medmosaicunc = basename + '.median_mosaic_unc.fits'
+    #-----------------------------------------------------------------------------
 
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic.fits',medmosaic)
-    except:
-        print("## WARNING: {:}/Combine-mosaic/median_mosaic.fits not found".format(processTMPDIR))
-        print("## ====> using {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead".format(processTMPDIR))
-        os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {:}".format(processTMPDIR, medmosaic))
-        # shutil.copy doesn't take wildcards
+    inf = processTMPDIR + '/Combine-mosaic/median_mosaic.fits'
+    out = medmosaic = basename  + '.median_mosaic.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs += 1
 
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
-    except:
-        print("## WARNING: {:}/Combine-mosaic/median_mosaic_unc.fits not found".format(processTMPDIR))
-        print("## ====> using {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instead".format(processTMPDIR))
-        os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {:}".format(processTMPDIR, medmosaicunc))
+    inf = processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits'
+    out = medmosaicunc = basename + '.median_mosaic_unc.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs += 1
     
+    #-----------------------------------------------------------------------------
     # clean up:  done in shell script if all products found
-    print("## Finished job {:}; delete its tempdir.".format(JobNo))
-    cleanupCMD = 'rm -rf ' + processTMPDIR  #; print(cleanupCMD)
-    os.system(cleanupCMD)
+    #-----------------------------------------------------------------------------
+    if cperrs > 0:
+        print("## Found {:} ERRORs in find_outliers job {:} ... see {:} for details.".format(cperrs, JobNo, logfile))
+        print("## tempdir {:} NOT deleted".format(processTMPDIR))
+        sys.exit(3)
+    else:
+        print(">> Copied  {:}.median_mosaic*.fits to {:}".format(basename, OutputDIR))
+        print("## Finished job {:} succesfully; delete its tempdir.".format(JobNo))
+        cleanupCMD = 'rm -rf ' + processTMPDIR  #; print(cleanupCMD)
+        os.system(cleanupCMD)
 
 
 #---------------------------------------------------------------------------------------------------
@@ -1386,6 +1405,8 @@ def build_mosaic(Ch):
         print("## ERROR: could not create temp dir .... quitting")
         sys.exit(3)
 
+    print("## Begin build_mosaic ch {:}; tmpdir is {:}".format(Ch, processTMPDIR))
+
     #input lists
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     masklist  = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + starMaskSuffix  + '.lst'
@@ -1406,76 +1427,71 @@ def build_mosaic(Ch):
     # check if it finshed properly
     errfile="build_mosaic_ch{:}.err".format(Ch)
     os.system("grep Error {:} > {:}".format(logfile, errfile))
-    with open(errfile, 'r') as f:
-        data = f.readlines()
-    if (len(data) > 0):
-        print("## ATTN: found errors in mopex logfile {:} ... quitting".format(logfile))
+    Nlines = sum(1 for l in open(errfile, 'r'))
+    if (Nlines == 0):
+        os.system("rm "+ errfile)
+    else:
+        print("## ATTN: found errors in mopex logfile {:} ".format(logfile))
+
+    #-----------------------------------------------------------------------------
+    # Finished with mopex ... move the files to the Outputs directory
+    #-----------------------------------------------------------------------------
+    basename = OutputDIR + PIDname + '.irac.' + str(Ch)
+    print(">> Products root name: {:}".format(basename))
+    cperrs = 0
+
+    inf = processTMPDIR + 'Combine-mosaic/mosaic.fits'
+    out = basename + '.mosaic.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs = 1
+
+    inf = processTMPDIR + 'Combine-mosaic/mosaic_unc.fits'
+    out = basename + '.mosaic_unc.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs = 1
+
+    inf = processTMPDIR + 'Combine-mosaic/mosaic_cov.fits'
+    out = basename + '.mosaic_cov.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs = 1
+
+    inf = processTMPDIR + 'Combine-mosaic/mosaic_std.fits'
+    out = basename + '.mosaic_std.fits'
+    if os.path.isfile(inf):  
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found".format(inf)); cperrs = 1
+
+    inf = processTMPDIR + 'Combine-mosaic/median_mosaic.fits'
+    out = basename + '.median_mosaic.fits'
+    if os.path.isfile(inf):
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found.".format(inf)); cperrs = 1
+
+    inf = processTMPDIR + 'Combine-mosaic/median_mosaic_unc.fits'
+    out = basename + '.median_mosaic_unc.fits'
+    if os.path.isfile(inf):
+        shutil.copy(inf, out)
+    else:
+        print("## ERROR: {:} not found.".format(inf)); cperrs = 1
+    
+    #-----------------------------------------------------------------------------
+    # Finish / clean up ... or not
+    #-----------------------------------------------------------------------------
+    if cperrs == 1:
+        print("## Quitting ... check products in {:}".format(processTMPDIR))
         sys.exit(3)
     else:
-        os.system("rm "+ errfile)
-
-    
-    #move the files to the Outputs directory
-    basename = OutputDIR + PIDname + '.irac.' + str(Ch)
-
-    mosaic = basename + '.mosaic.fits'
-    print(">> Products root name: {:}".format(mosaic))
-    cperrs = 0
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic.fits', mosaic)
-    except:
-        print("##ERROR: {:}/Combine-mosaic/mosaic.fits not found".format(processTMPDIR.spit('/')[-1]))
-        cperrs = 1
-
-    mosaicunc = basename + '.mosaic_unc.fits'
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_unc.fits',mosaicunc)
-    except:
-        print("##ERROR: {:}/Combine-mosaic/mosaic_unc.fits not found".format(processTMPDIR.spit('/')[-1]))
-        cperrs = 1
-
-    mosaiccov = basename + '.mosaic_cov.fits'
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_cov.fits',mosaiccov)
-    except:
-        print("##ERROR: {:}/Combine-mosaic/mosaic_cov.fits not found".format(processTMPDIR.spit('/')[-1]))
-        cperrs = 1
-
-    mosaicstd = basename + '.mosaic_std.fits'
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/mosaic_std.fits',mosaicstd)
-    except:
-        print("##ERROR: {:}/Combine-mosaic/mosaic_std.fits not found".format(processTMPDIR.spit('/')[-1]))
-        cperrs = 1
-
-    if cperrs == 1:
-        print(" ## Quitting ... check products in {:}".format(processTMPDIR.spit('/')[-1]))
-        sys.exit(3)
-
-    # cp the median_mosaic products to the output dir
-    medmosaic = basename + '.median_mosaic.fits'
-    medmosaicunc = basename + '.median_mosaic_unc.fits'
-    
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic.fits',medmosaic)
-    except:
-        print("## WARNING: {:}/Combine-mosaic/median_mosaic.fits not found".format(processTMPDIR.spit('/')[-1]))
-        print("## ====> using /Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts instead")
-        os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts {:}".format(processTMPDIR, medmosaic))
-        # shutil.copy doesn't take wildcards
-        #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Image.f?ts', medmosaic)
-    
-    try:
-        shutil.copy(processTMPDIR + '/Combine-mosaic/median_mosaic_unc.fits',medmosaicunc)
-    except:
-        print("## WARNING: {:}/Combine-mosaic/median_mosaic_unc.fits not found".format(processTMPDIR.spit('/')[-1]))
-        print("## ====> using /Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts instaed")
-        os.system("cp -v {:}/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts {:}".format(processTMPDIR, medmosaicunc))
-        #shutil.copy(processTMPDIR + '/Coadd-mosaic/coadd_median_coadd_Tile_001_Unc.f?ts',medmosaicunc)
-    
-    # clean up:  done in shell script if all products found
-    cleanupCMD = 'rm -rf ' + processTMPDIR
-    print(cleanupCMD)
-    os.system(cleanupCMD)
+        # clean up:  done in shell script if all products found
+        cleanupCMD = 'rm -rf ' + processTMPDIR
+        # print(cleanupCMD)
+        os.system(cleanupCMD)
 
 #---------------------------------------------------------------------------------------------------

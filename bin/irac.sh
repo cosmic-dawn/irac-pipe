@@ -42,11 +42,12 @@
 #        adjust dynamic walltime,                                  (30.jun.19)
 # v2.22: more checks on find_outliers, and more                    (10.jul.19)
 # v2.23: find_outliers now parallelised by node                    (10.jul.19)
+# v2.24: dynamic ppn and walltime for outliers and more            (18.jul.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.23 (11.jul.19)"
+vers="2.24 (18.jul.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -125,6 +126,7 @@ else
 fi
 
 wtime="12:00:00"   # default value
+Naor="2"           # a dummy vaue
 #-----------------------------------------------------------------------------
 # Functions
 #-----------------------------------------------------------------------------
@@ -175,11 +177,13 @@ chk_prev() {
 
 write_module() {  # write local verions of py and sh modules
     info="for $WRK, built $(date +%d.%h.%y\ %T)"
-    sed -e "s|@NPROC@|$Nproc|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
+	Naor=$(ls -d $rdir/r* | wc -l)
+	if [ $Naor -gt 99 ]; then ppn=46; else ppn=30; fi
+    sed -e "s|@NPROC@|$ppn|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
         -e "s|@INFO@|$info|"   -e "s|@PID@|$PID|" -e "s|@WTIME@|$wtime|" \
-        $bindir/$module.sh > ./$module.sh
+		-e "s|@PPN@|$ppn|" $bindir/$module.sh > ./$module.sh
     chmod 755 $module.sh
-    ec "# Wrote $module.sh"
+    ec "# Wrote $module.sh: ppn=$ppn"
     if [ $dry == "T" ]; then ec "----  EXITING DRY MODE  ---- "; exit 10; fi
     # submit module and wait for job to finish
     if [ -e $module.out ]; then rm $module.out; fi 
@@ -248,11 +252,11 @@ pipelog=$WRK/irac.log
 bindir=/home/moneti/softs/irac-pipe/bin
 pydir=/home/moneti/softs/irac-pipe/python
 
-ec "  #=================================================#"
-ec "  #                                                 #"
-ec "  #    This is irac.sh ver $vers        #"
-ec "  #                                                 #"
-ec "  #=================================================#"
+ec "    #=================================================#"
+ec "    #                                                 #"
+ec "    #    This is irac.sh ver $vers         #"
+ec "    #                                                 #"
+ec "    #=================================================#"
 ec "|-------  Check parameters  ---------------------------"
 ec "| Machine info and more:"
 ec "| - Work node:          $NODE"
@@ -353,6 +357,9 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
     chk_prev NULL 
     if [ -e $fn ]; then comm="rsync -au $fn ."; ec "$comm"; $comm; fi
     
+#	ppn=$((5+$Nframes/20000))
+#	Naor=$(ls -d $rdir/r* | wc -l)
+#	if [ $Naor -gt 99 ]; then ppn=46; else ppn=30; fi
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
@@ -691,7 +698,7 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
     if [ -e $tlf ] && [ $njobs -gt 0 ]; then
         ec "# ==>$(grep Split\ mosaic $module.out)"
         ec "# ==>$(grep Wrote\ FIF    $module.out)"
-        ec "# ==> Built mosaic tile list with $(($njobs-4))  entries (jobs)"
+        ec "# ==> Built mosaic tile list with $njobs entries (jobs)"
     else
         ec "# PROBLEM: $tlf not found or Njobs = 0"
         askuser
@@ -770,11 +777,11 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     if [ $nerr -ge 1 ]; then 
         ec "# WARNING: there are some submission errors - check submit_outliers.log ... continuing"
     else
-        ec "# All jobs submitted ok ..."
+        ec "# All $nmod jobs submitted ok ..."
         rm submit.errs
     fi
     
-    ec "--  Wait for all outliers_nn to finish  --"; sleep 20
+    ec '# Begin wait loop -- wait for all outliers_* jobs to finish  --'
     n=0 # define loop counter to monitor progress
     while :; do 
         ndone=$(ls outliers_*.out 2> /dev/null | wc -l)
@@ -820,6 +827,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     nerr=$(cat $errfile | wc -l)
     if [ $nerr -gt 0 ]; then
         ec "ATTN: found $nerr errors in .log files ... check file $errfile"
+		askuser
     else
         ec "# ==> no other errors found ... mv make_tile_*.* to outliers dir "
         rm -f $errfile 
@@ -836,9 +844,12 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
         ec "ATTN: Found only $nmos tiles of $nsub expected ..."
     fi
     
-    mkdir outliers_par.logfiles
-    mv outliers_*.?? outliers_*.???  submit_outliers.log  outliers_par.logfiles
+    if [ ! -d outliers.files ]; then mkdir outliers.files; fi
+    mv outliers_*.?? outliers_*.???  outliers.info submit_outliers.log  outliers.files
     rm addkeyword.txt run.outliers
+
+	# need this file for automatic continuation
+	touch $module.out   
     
     end_step
 fi
@@ -889,8 +900,8 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     if [ -e $fn ]; then comm="rsync -au $fn ."; ec "$comm"; $comm; fi
     bdate=$(date "+%s.%N")       # start time/date
     
-    rm -f build.qall ${module}_ch?.out
-    ec "# From supermopex: namelist for make_mosaic mosaics is: $(grep ^IRACMosaicConfig supermopex.py | cut -d\'  -f2,2)"
+    rm -f run.mosaics ${module}_ch?.out mosaics.info
+    ec "# Namelist for mosaic.pl is: $(grep ^IRACMosaicConfig supermopex.py | cut -d\'  -f2,2)"
 
     chans=$(cut -d\  -f2 $odir/$ltab | grep 0000_0000 | sed 's|automnt/||' | cut -d\/ -f6 | sort -u | cut -c3,4)
     ecn "# Found channels: $(for c in $chans; do echo -n "$c "; done) "; echo '' | tee -a $pipelog #   ; exit
@@ -901,25 +912,22 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
         Nfram=$(grep _I${chan}_ $odir/$ltab | wc -l)
         wtime=$((5+$Nfram/2100)):00:00
-		#if [ $chan -le 2 ]; then ppn=46; else ppn=30; fi
-        #ppn=$((24+$Nfram/8500))
 		if [ $Nfram -ge 25000 ]; then ppn=46; else ppn=30; fi
         #ec "# Chan $chan has $Nfram frames ==> set ppn=$ppn, PBS walltime to $wtime ..."
         sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|" -e "s|@PID@|$PID|"  -e "s|@CHAN@|$chan|"  \
-            -e "s|@WTIME@|$wtime|" -e "s|@PPN@|$ppn|"  $bindir/${module}.sh > ./$outmodule
-        #NF=$(grep in\ Ch${chan} irac.log | tr -s \  | cut -d\  -f7)  # N frames this ch.
-        #if [ $NF -gt 40000 ]; then sed -i 's/time=48/time=600/' $outmodule; fi
+            -e "s|@WTIME@|$wtime|" -e "s|@PPN@|$ppn|"  -e "s|@NTHRED@|$Nthred|" \
+			$bindir/${module}.sh > ./$outmodule
         chmod 755 $outmodule
 		echo " $chan  $Nfram $outmodule $ppn $wtime" | \
 			awk '{printf "# Ch%d with %6d frames ==> %s with %2d ppn, wt %2d hr\n", $1,$2,$3,$4,$5}' | \
-            tee -a outliers.info
+            tee -a mosaics.info
         #ec " wrote $outmodule" 
-        echo "qsub $outmodule; sleep 1" >> build.qall
+        echo "qsub $outmodule; sleep 1" >> run.mosaics
     done
     if [ $dry == "T" ]; then ec "----  EXITING PIPELINE DRY MODE     ---- "; exit 10; fi
 
-    nsub=$(cat build.qall | wc -l)
-    ec "# Submit $nsub ${module}_ch? files ... "; source build.qall #| tee -a $pipelog
+    nsub=$(cat run.mosaics | wc -l)
+    ec "# Submit $nsub ${module}_ch? files ... "; source run.mosaics #| tee -a $pipelog
     
     # wait loop
     ec "--  Wait for ${module}_ch? to finish  --"; sleep 20
@@ -939,40 +947,48 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     grep EXIT\ STATUS ${module}_ch?.out > estats.txt
     nbad=$(grep -v STATUS:\ 0  estats.txt | wc -l)  # files w/ status != 0
     if [ $nbad -gt 0 ]; then
-        ec "PROBLEM: $module.sh exit status not 0: "
-        grep -v STATUS:\ 0 estats.txt ; askuser
+        ec "# PROBLEM: $module.sh exit status not 0: "
+        grep -v STATUS:\ 0 estats.txt 
     else
-        ec "# ==> torque exit status ok;"; rm -f estats.txt
+        ec "# Torque exit status ok ..."; rm -f estats.txt
     fi
     
-    # 2. check .out file for other errors (python)
-    # mopex logfiles are checked in python function for each chan
-    errfile=$module.err
-    grep -i -n -e Error -e Exception -e MALLOC build_mosaic_ch?.out > $errfile
-    grep -n exit ${module}_ch?.out | grep -v ' 0' >> $errfile
-    nerr=$(cat $errfile | wc -l)
+    # 2. check mopex logfiles (.log) for proper termination, and if not look for known errors
+	for f in build_mosaic_ch?.log; do echo -n "$f: "; tail $f | strings | tail -1; done > mosaics.done
+	npbs=$(cat mosaics.done | grep -v normally | wc -l)
+	if [ $npbs -gt 0 ]; then
+		errfile=$module.err
+		grep -i -n -e Error -e Exception -e MALLOC build_mosaic_ch?.log  > $errfile
+		grep ^System\ Exit  build_mosaic_ch?.log | grep -v ' 0'  >> $errfile
+		nerr=$(cat $errfile | wc -l)
+		if [ $nerr -gt 0 ]; then
+			ec "PROBLEM: found $nerr errors in .out files ... check file $errfile"
+			head -6 $errfile ; askuser
+		fi
+	else
+		ec "# All build_mosaic jobs terminated normally (dixit mopex)"
+    fi
 
-    if [ $nerr -gt $nsub ]; then
-        ec "PROBLEM: found $nerr errors in .out files ... check file $errfile"
-        head -6 $errfile ; askuser
-    else
-        ec "# ==> no other errors found ... continue "; rm -f $errfile 
-    fi
-    
-    rm build.qall addkeyword.txt
+    ec "# The mosaics are in:"
+    for f in $odir/$PID.irac.?.mosaic.fits; do
+		ec "# - $f"
+	done
+
+	# and finally cleanup.
+	if [ ! -d mosaics.logfiles ]; then mkdir mosaics.logfiles; fi
+	mv build_mosaic*.sh build_mosaic_*.??? mosaics.logfiles
+    rm -f run.mosaics addkeyword.txt
     # NB FIF.tbl needed to rerun mosaics; else rebuild by prep_mosaic
     
-    ec "# The mosaics are in:"
-    ls -1 $odir/$PID.irac.?.mosaic.fits 
     ec "#-----------------------------------------------------------------------------"
     ec "# >>>>  Pipeline step $module finished successfully ... good job!!  <<<<"
     ec "#-----------------------------------------------------------------------------"
     ec "#                                                                             "
-    ec "  #=================================================#"
-    ec "  #                                                 #"
-    ec "  #          Here ends the irac pipeline            #"
-    ec "  #                                                 #"
-    ec "  #=================================================#"
+    ec "    #=================================================#"
+    ec "    #                                                 #"
+    ec "    #          Here ends the irac pipeline            #"
+    ec "    #                                                 #"
+    ec "    #=================================================#"
     ec ""
 #    ec "#-----------------------------------------------------------------------------"
 #    echo "" | tee -a $pipelog
@@ -991,88 +1007,7 @@ fi
 ### -#------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
-### - 20. make_mosaics      (single_mos)   
-### -     - full build of mosaics in single run on single node
-#-----------------------------------------------------------------------------
-
-if [[ $1 =~ "make_mos" ]]       || [[ $1 =~ "single_mos" ]] || [ $auto == "T" ]; then
-
-    if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-    ec "#-----------------------------------------------------------------------------"
-    ec "# >>>>  15. Build mosaics - direct build  <<<<"
-    ec "#-----------------------------------------------------------------------------"
-    module=make_mosaics
-    bdate=$(date "+%s.%N")       # start time/date
-    chk_prev combine_rmasks
-    write_module
-    ec "# Job $module finished - unix walltime=$(wt)"
-    chk_outputs
-    
-    end_step
-    exit 0
-fi
-
-
-#-----------------------------------------------------------------------------
-### - 21. find outliers   (outliers)   run on single node - superceded
-### -     Builds mosaics at native resolution with mopex; we want the rmasks 
-#-----------------------------------------------------------------------------
-
-if [[ $1 =~ "find_outliers_single" ]] || [[ $1 =~ "outlisingle" ]] || [ $auto == "T" ]; then
-
-    if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
-    ec "#-----------------------------------------------------------------------------"
-    ec "# >>>>  13. Find outliers and build rmasks at native resolution    <<<<"
-    ec "#-----------------------------------------------------------------------------"
-    module=find_outliers
-    bdate=$(date "+%s.%N")       # start time/date
-    wtime=$((1+$Nframes/5500)):00:00
-    ec "# for $Nframes frames set PBS walltime to $wtime"
-    chk_prev setup_tiles
-    
-    write_module
-    ec "# Job $module finished - unix walltime=$(wt)"
-    chk_outputs
-
-    # outliers_*.log are from mopex - look for mopex errors.  First, last line of should be
-    # "Wrapper-script mosaic.pl terminated normally", if not ... then there is a problem
-    for f in out*.log; do echo -n "$f  ";  tail -5 $f | strings | tail -1 ; done | grep -v Wrapper > outliers.failed
-    nerr=$(cat outliers.failed | wc -l)
-    if [ $nerr -ge 1 ]; then
-        ec "# the following jobs did not termainate normally:"
-        cat outliers.failed
-        # Look for known erros in failed outliers_*.log
-        rm -f $module.errs
-        for l in $(cut -d\  -f1 outliers.failed); do
-            echo "-- in $l" >> $modules.errs
-            grep -n -e MALLOC -e Err -e Warning -e uninitialized\ value $ll >> $module.errs
-        done
-        ec "# Known errors in $module.errs"
-        askuser
-    else
-        ec "# All find_outliers jobs terminated normally (mopex dixit)"
-        rm outliers.errs
-    fi
-
-    grep -n -e MALLOC -e Err -e Warning -e uninitialized\ value outliers_*.log > $module.errs
-    nerr=$(cat $module.errs | wc -l)
-    if [ $nerr -ge 1 ]; then
-        ec "# Found $nerr errors in logfiles - see make_tile.errs"
-        askuser
-    else
-        rm $module.errs
-    fi
-    
-    # put away logfiles
-    mkdir outliers.logs
-    mv outliers_*.log outliers.logs
-
-    end_step
-fi
-
-
-#-----------------------------------------------------------------------------
-### - 23. combine tiles into mosaics (swarp)
+### - NN. combine tiles into mosaics (swarp)
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "combine_tiles" ]]  || [ $1 == "combTiles" ] || [ $auto == "T" ]; then

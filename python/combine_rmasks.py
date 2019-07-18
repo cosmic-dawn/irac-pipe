@@ -1,3 +1,4 @@
+
 #!/opt/local/bin/python
 
 import re,os,shutil
@@ -33,9 +34,9 @@ RmaskFiles = ascii.read(fileList,format="no_header")
 RmaskFiles.rename_column('col1','Filename')
 Nfiles = len(RmaskFiles)
 
-print("# Reading DCE numbers from " + str(Nfiles) + " RMasks on " + str(Nproc) + " threads.")
+print("# Reading DCE numbers of " + str(Nfiles) + " RMasks with " + str(Nthred) + " threads.")
 #get_rmask_dce(0,RmaskFileList=RmaskFiles)
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nthred)
 RmaskDCEresults = pool.map(partial(get_rmask_dce, RmaskFileList=RmaskFiles), range(0,Nfiles))
 pool.close()
 
@@ -50,16 +51,17 @@ OutputRmaskTable = Table(rows=OutputRmaskList,names=['Filename','DCE'])
 ascii.write(OutputRmaskTable, "OutputRmasks.tbl", format="ipac",overwrite=True) 
 
 #Nproc=1   #for testing
-print("# Combining RMask files using {:} threads".format(Nproc))
+print("# Combining RMask files using {:} threads".format(Nthred))
 
 #combine_rmasks(5,RmaskFileList=OutputRmaskTable,log=log)
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nthred)
 results = pool.map(partial(combine_rmasks, RmaskFileList=OutputRmaskTable, log=log), range(0, Nrows))
 pool.close()
 
 #make the rmask lists in the same way we did it in setup_pipeline
 IracChannels = set(log['Channel'][(log['Instrument']=='IRAC')])
 for Ch in IracChannels:
+    print("# Make the rmask lists for ch {:}".format(Ch))
     #get the list of files for this instrument and band
     files = log['Filename'][((log['Instrument']=='IRAC') & (log['Channel']==Ch)).nonzero()]
     
