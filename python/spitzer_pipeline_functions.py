@@ -1174,7 +1174,7 @@ def run_mosaic_geometry(JobNo,JobList):
     #Run Mosaic
     logfile = '{:}setup_tiles_{:}.log'.format(processTMPDIR, JobNo)
     cmd = 'mosaic.pl -n ' +IRACTileGeomConfig+ ' -I ' +imagelist+ ' -F' +JobList['FIF'][JobNo]+ ' -O ' +processTMPDIR+ ' > '+logfile+' 2>&1'
-    print(cmd)
+    #print(cmd)   ## DEBUG
     os.system(cmd)
     
     #count the number of files in mosaic geometry
@@ -1194,7 +1194,7 @@ def run_mosaic_geometry(JobNo,JobList):
     #os.system(logfileCMD)
     
     cleanupCMD = 'rm -rf ' + processTMPDIR
-    print(cleanupCMD)
+#    print(cleanupCMD)
     os.system(cleanupCMD)
     
     return(num_files)

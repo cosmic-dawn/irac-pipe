@@ -3,7 +3,7 @@
 #PBS -N rmasks_@PID@
 #PBS -o combine_rmasks.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=@NPROC@,walltime=24:00:00
+#PBS -l nodes=1:ppn=@PPN@,walltime=24:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     combine_rmasks.sh @INFO@

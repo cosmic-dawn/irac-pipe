@@ -22,27 +22,27 @@ locnode = os.uname().nodename.split('.')[0]  # name of process node
 if not os.path.isfile(AllTiles):
     #make the common FIF for the mosaics
     FIFlist = OutputDIR + PIDname + '.irac.FIF.' + corDataSuffix + '.lst' 
-    iracFIF = OutputDIR + PIDname + '.irac.FIF.tbl' 
+
     # now run fiducial_frame.pl (wrapper forFIF  fiducial_image_frame) to build header_list.tbl
     print('# Run FIF to figure out mosaic geometry (build {:}header_list.tbl)'.format(TMPDIR))
-    #logfile = 'setup_tiles_{:}.log'.format(locnode)
     logfile = 'setup_tiles.log'
     cmd = 'mosaic.pl -n irac_FIF.nl -I {:} -O {:} > {:} 2>&1'.format(FIFlist, TMPDIR , logfile)
+    print("# Command line is:\n  " + cmd)
     os.system(cmd)
-    # check logfile for errors
-    #cmd = 'grep -e ^System -e normally {:}'.format(logfile)
-    #xx = os.system(cmd)
+
+    # if all went well there should be a FIF.tbl file in the work dir.  
     if os.path.isfile('FIF.tbl'):
-        print('# Built FIF.tbl file ')
+        print('# mosaic.pl run successful; Built header list and FIF.tbl file ... contiuue')
     else:
         print("# ERROR: FIF.tbl file not build; check {:} ... quitting".format(logfile))
         sys.exit(5)
 
-    # copy the FIF over
-    shutil.copy('FIF.tbl',iracFIF)
+    # copy the FIF to OutputDIR
+    iracFIF = OutputDIR + PIDname + '.irac.FIF.tbl' 
+    shutil.move('FIF.tbl',iracFIF)
 
     # read in the FIF
-    FIFfile = open('FIF.tbl',"r")
+    FIFfile = open(iracFIF,"r")
     
     FIFlines = FIFfile.readlines()
     linecnt=0
@@ -70,7 +70,7 @@ if not os.path.isfile(AllTiles):
     Ntot = Nx*Ny
     print("# Split mosaic into Nx={} x Ny={} tiles".format(Nx,Ny))
 
-    #make new FIFs for each tile
+    # make new FIFs for each tile
     tileID=0
     FIFlist = list()
     for y in range(0,Ny):
@@ -113,7 +113,7 @@ if not os.path.isfile(AllTiles):
             tileID+=1
 
     print("# Wrote FIF files for {} tiles".format(tileID))
-    print("# Now build job list")
+#    print("# Now build job list")
 
     #Make a job list for the mosaic tiles
     #Figure out number of channels and loop over them

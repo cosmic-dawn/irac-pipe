@@ -106,7 +106,8 @@ get_nproc() {
     cnodes | grep cores\] | cut -c2-5,23-25 | grep $NODE | cut -c5,6 ;
 }
 
-if [[ $(hostname) =~ "candid" ]]; then
+#if [[ $(hostname) =~ "candid" ]] || [[ $(hostname) == 'c02' ]]; then
+if [[ $(hostname) =~ "c" ]]; then
     if [ -e supermopex.py ]; then 
         Nproc=$(grep  '^Nproc'  supermopex.py | tr -s ' ' | cut -d\  -f3)
         Nthred=$(grep '^Nthred' supermopex.py | tr -s ' ' | cut -d\  -f3)
@@ -127,6 +128,7 @@ fi
 
 wtime="12:00:00"   # default value
 Naor="2"           # a dummy vaue
+ppn=3
 #-----------------------------------------------------------------------------
 # Functions
 #-----------------------------------------------------------------------------
@@ -177,8 +179,8 @@ chk_prev() {
 
 write_module() {  # write local verions of py and sh modules
     info="for $WRK, built $(date +%d.%h.%y\ %T)"
-	Naor=$(ls -d $rdir/r* | wc -l)
-	if [ $Naor -gt 99 ]; then ppn=46; else ppn=30; fi
+#	Naor=$(ls -d $rdir/r* | wc -l)
+#	if [ $Naor -gt 99 ]; then ppn=46; else ppn=30; fi
     sed -e "s|@NPROC@|$ppn|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
         -e "s|@INFO@|$info|"   -e "s|@PID@|$PID|" -e "s|@WTIME@|$wtime|" \
 		-e "s|@PPN@|$ppn|" $bindir/$module.sh > ./$module.sh
@@ -696,8 +698,8 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
     tlf=${odir}/${PID}$(grep '^TileListFile ' $pars | cut -d\' -f2) 
     njobs=$(cat $tlf | grep $PID | wc -l)
     if [ -e $tlf ] && [ $njobs -gt 0 ]; then
-        ec "# ==>$(grep Split\ mosaic $module.out)"
-        ec "# ==>$(grep Wrote\ FIF    $module.out)"
+        ec "# ==>$(grep Split\ mosaic $module.out | cut -c2-99)"
+        ec "# ==>$(grep Wrote\ FIF    $module.out | cut -c2-99)"
         ec "# ==> Built mosaic tile list with $njobs entries (jobs)"
     else
         ec "# PROBLEM: $tlf not found or Njobs = 0"
@@ -868,7 +870,10 @@ if [[ $1 =~ "combine_rm" ]]     || [ $1 == "rmasks" ] || [ $auto == "T" ]; then
     module=combine_rmasks
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev find_outliers
-    
+
+    Nfram=$(cat $odir/$ltab | wc -l)
+	if [ $Nfram -ge 25000 ]; then ppn=33; else ppn=25; fi
+	echo $Nfram $ppn
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
@@ -911,7 +916,7 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
         outmodule=${module}_ch${chan}.sh
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
         Nfram=$(grep _I${chan}_ $odir/$ltab | wc -l)
-        wtime=$((5+$Nfram/2100)):00:00
+        wtime=$((5+$Nfram/1200)):00:00
 		if [ $Nfram -ge 25000 ]; then ppn=46; else ppn=30; fi
         #ec "# Chan $chan has $Nfram frames ==> set ppn=$ppn, PBS walltime to $wtime ..."
         sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|" -e "s|@PID@|$PID|"  -e "s|@CHAN@|$chan|"  \
