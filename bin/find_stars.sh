@@ -3,7 +3,7 @@
 #PBS -N find_@PID@
 #PBS -o find_stars.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=@NPROC@,walltime=@WTIME@
+#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     find_stars.sh @INFO@

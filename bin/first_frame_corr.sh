@@ -3,7 +3,7 @@
 #PBS -N ffcorr_@PID@
 #PBS -o first_frame_corr.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=@NPROC@,walltime=12:00:00
+#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     first_frame_corr.sh @INFO@

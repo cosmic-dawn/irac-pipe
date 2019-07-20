@@ -3,7 +3,7 @@
 #PBS -N submeds_@PID@
 #PBS -o subtract_medians.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=@NPROC@,walltime=48:00:00
+#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     subtract_medians.sh @INFO@

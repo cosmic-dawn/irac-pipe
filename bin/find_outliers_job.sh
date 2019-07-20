@@ -80,7 +80,7 @@ echo ">> ==========   End python output   ========== "
 echo ""
 
 # check mopex logfile for proper termination
-logfile=outliers_@JOB@.log
+logfile=outliers_$jobNo.log
 fin=$(tail -1 $logfile)
 if [ $(echo $fin | grep terminated\ normally | wc -l) -eq 1 ]; then
 	echo ">> $fin"

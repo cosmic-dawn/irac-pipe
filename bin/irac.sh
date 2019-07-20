@@ -126,7 +126,7 @@ else
     if [ $dry == "F" ]; then exit 1; fi 
 fi
 
-wtime="12:00:00"   # default value
+wtime="18:00:00"   # default value
 Naor="2"           # a dummy vaue
 ppn=3
 #-----------------------------------------------------------------------------
@@ -172,20 +172,19 @@ chk_prev() {
     fi
     xdone=T   # partly done ... (do not print list of steps)
     # copy python scripts to work dir
-    comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
+    comm="rsync -au $pydir/$module.py ."; $comm
     fn=$pydir/${module%.py}_function.py
-    if [ -e $fn ]; then comm="rsync -au $fn ."; ec "$comm"; $comm; fi
+#    if [ -e $fn ]; then comm="rsync -au $fn ."; ec "$comm"; $comm; fi
+    if [ -e $fn ]; then comm="rsync -au $fn ."; $comm; fi
 }
 
 write_module() {  # write local verions of py and sh modules
     info="for $WRK, built $(date +%d.%h.%y\ %T)"
-#	Naor=$(ls -d $rdir/r* | wc -l)
-#	if [ $Naor -gt 99 ]; then ppn=46; else ppn=30; fi
-    sed -e "s|@NPROC@|$ppn|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"  \
-        -e "s|@INFO@|$info|"   -e "s|@PID@|$PID|" -e "s|@WTIME@|$wtime|" \
-		-e "s|@PPN@|$ppn|" $bindir/$module.sh > ./$module.sh
+    sed -e "s|@NPROC@|$Nproc|" -e "s|@WRK@|$WRK|" -e "s|@NODE@|$NODE|"   \
+        -e "s|@INFO@|$info|" -e "s|@PID@|$PID|" -e "s|@WTIME@|$wtime|" \
+		-e "s|@PPN@|$ppn|"   $bindir/$module.sh > ./$module.sh
     chmod 755 $module.sh
-    ec "# Wrote $module.sh: ppn=$ppn"
+    ec "# Wrote $module.sh with: $(grep l\ nodes= $module.sh | cut -d\  -f3)"
     if [ $dry == "T" ]; then ec "----  EXITING DRY MODE  ---- "; exit 10; fi
     # submit module and wait for job to finish
     if [ -e $module.out ]; then rm $module.out; fi 
@@ -254,35 +253,39 @@ pipelog=$WRK/irac.log
 bindir=/home/moneti/softs/irac-pipe/bin
 pydir=/home/moneti/softs/irac-pipe/python
 
-ec "    #=================================================#"
-ec "    #                                                 #"
-ec "    #    This is irac.sh ver $vers         #"
-ec "    #                                                 #"
-ec "    #=================================================#"
-ec "|-------  Check parameters  ---------------------------"
+ec "   #=================================================#"
+ec "   #                                                 #"
+ec "   #    This is irac.sh ver $vers         #"
+ec "   #                                                 #"
+ec "   #=================================================#"
+ec "|-------  Check parameters  -----------------------------"
 ec "| Machine info and more:"
 ec "| - Work node:          $NODE"
 ec "| - Work dir (\$WRK):    $WRK"
-ec "| - Shell scripts in:   $bindir/"
-ec "| - Python scripts in:  $pydir/"
-ec "|------------------------------------------------------"
-ecn "| " ; module list
-ec "|------------------------------------------------------"
+#ec "| - Shell scripts in:   $bindir/"
+#ec "| - Python scripts in:  $pydir/"
+ec "|--------------------------------------------------------"
+module list 2> ml
+ec "| Loaded modules: "
+ec "| $(grep -v Loaded ml) " ; rm ml
+ec "|--------------------------------------------------------"
 
+# Rebuild supermopex.py if not preset
 if [ ! -e $pars ]; then 
-    ec "|### ATTN: Build local $pars from ###"  # | tee -a $pipelog
-    ec "|### template is $pydir/$pars"
-    info="built for $WRK on $(date +%d.%h.%y\ %T)"
+    ec "|#### ATTN: Build local $pars - template is:"  # | tee -a $pipelog
+    ec "|#### $pydir/$pars"
+    info="built for $WRK on $(date +%d.%h.%y\ %H:%M)"
     PID=$(pwd | tr \/ \  | awk '{print $NF}')
     sed -e "s|@INFO@|$info|"  -e "s|@NPROC@|$Nproc|"  -e "s|@NTHRED@|$Nthred|" \
         -e "s|@NODE@|$NODE|"  -e "s|@ROOTDIR@|$WRK|"  -e "s|@PID@|$PID|"  \
         -e "s|@CLUSTER@|candide|"  $pydir/$pars > ./$pars
 else 
-    ec "|### ATTN: Using local $pars ###"            #### | tee -a $pipelog
-    ec "|### $(grep mopex.py $pars | grep built | cut -d' ' -f3-9) ###" #### | tee -a $pipelog
+    ec "|####        ATTN: Using local $pars         ####"            #### | tee -a $pipelog
+    ec "|####   $(grep mopex.py $pars | grep built | cut -d' ' -f3-9)    ####" #### | tee -a $pipelog
 fi
-ec "|------------------------------------------------------"
-ec "| Python params from $pars:"
+
+ec "|--------------------------------------------------------"
+ec "| Params from $pars:"
 
 # extract params from supermopex
 rnod=$(grep '^RootNode '   $pars | cut -d\' -f2)
@@ -306,6 +309,8 @@ ec "| - TempDir:           \$RootDIR/$tdir/"
 ec "| - Cluster is:        $(grep 'cluster ' $pars | cut -d\' -f2 )"
 ec "| - Nproc requested:   $(grep 'Nproc  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
 ec "| - Nthread requested: $(grep 'Nthred  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
+ec "|--------------------------------------------------------"
+ec "| Data info:"
 
 if [ -d $(echo $rdir | tr -d \/) ]; then
     NAORs=$(ls -d $rdir/r???* 2> /dev/null| wc -l)
@@ -314,7 +319,7 @@ else
     ec "| ###### ./$rdir not found or contains no AORs ######"
 fi       
 
-ec "|-------  End parameter check  ------------------------"
+ec "|-------  End parameter check  --------------------------"
 echo ""
 
 if [ $1 == "pars" ] || [ $1 == "env" ] || [ $NAORs -eq 0 ]; then
@@ -359,9 +364,10 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
     chk_prev NULL 
     if [ -e $fn ]; then comm="rsync -au $fn ."; ec "$comm"; $comm; fi
     
-#	ppn=$((5+$Nframes/20000))
-#	Naor=$(ls -d $rdir/r* | wc -l)
-#	if [ $Naor -gt 99 ]; then ppn=46; else ppn=30; fi
+	Naor=$(ls -d $rdir/r* | wc -l)
+	if [ $Naor -gt 99 ]; then ppn=46; else ppn=30; fi
+	#ppn=$Nproc
+	wtime=$((5+$Naor/25)):00:00
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
@@ -444,7 +450,7 @@ fi
 #-----------------------------------------------------------------------------
 ### -  3. first_frame_corr  (ffcorr)
 #-----------------------------------------------------------------------------
-
+#Nframes=280000
 if [[ $1 =~ "first_frame" ]]    || [ $1 == "ffcorr" ] || [ $auto == "T" ]; then
 
     if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
@@ -454,7 +460,9 @@ if [[ $1 =~ "first_frame" ]]    || [ $1 == "ffcorr" ] || [ $auto == "T" ]; then
     module=first_frame_corr
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev get_catalogs
-    
+
+	if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
+    wtime=$((5+$Nframes/500000)):00:00
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     # fix logfile (missing CRs)
@@ -467,16 +475,6 @@ fi
 ### -  4. find_stars
 #-----------------------------------------------------------------------------
 
-## On how to split this into several jobs to run on different nodes:
-## 1. with the first part of find_stars.sh, build job list and bright stars table
-## 2. in shell, split this list into N sublists; selecting a suitable value of N
-## 3. for each sublist, 
-## 3a. pipeline builds new findStars.sh from template
-## 3b. new findStars.py reads sublist and bright stars table, then using "mp.Pool"
-##     launches the jobs
-## Thus find_stars_function and spitzer_pipeline_functions remain the same
-
-
 if [[ $1 =~ "find_st" ]]        || [ $1 == "stars" ]  || [ $auto == "T" ]; then
 
     if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
@@ -486,7 +484,9 @@ if [[ $1 =~ "find_st" ]]        || [ $1 == "stars" ]  || [ $auto == "T" ]; then
     module=find_stars
     bdate=$(date "+%s.%N")       # start time/date
     # estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
-    wtime=$((1+$Nframes/5500)):00:00
+
+	if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
+    wtime=$((5+$Nframes/10000)):00:00
     ec "# for $Nframes frames set PBS walltime to $wtime"
     #echo "$Nframes $Nproc ==> $wtime"  ; exit
     
@@ -523,7 +523,9 @@ if [[ $1 =~ "merge_st" ]]       || [ $1 == "merge" ]  || [ $auto == "T" ]; then
     module=merge_stars
     chk_prev find_stars
     bdate=$(date "+%s.%N")       # start time/date
-    
+
+    wtime=$((1+$Nframes/25000)):00:00
+    if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs; end_step
@@ -541,11 +543,10 @@ if [[ $1 =~ "subtract_st" ]]    || [ $1 == "substars" ] || [ $auto == "T" ]; the
     ec "#-----------------------------------------------------------------------------"
     module=subtract_stars
     bdate=$(date "+%s.%N")       # start time/date
-    # estimate 0.5 min/frame ==> divide by 2 for 1.5 margin
-    wtime=$((1+$Nframes/5500)):00:00
-    ec "# for $Nframes frames set PBS walltime to $wtime"
     chk_prev merge_stars
     
+    wtime=$((1+$Nframes/10000)):00:00
+    if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     
@@ -574,6 +575,8 @@ if [[ $1 =~ "make_med" ]]       || [ $1 == "medians" ] || [ $auto == "T" ]; then
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev subtract_stars
     
+    wtime=$((3+$Nframes/50000)):00:00
+    if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     # fix logfile (missing CRs)
@@ -593,11 +596,10 @@ if [[ $1 =~ "fix_astr" ]] || [ $1 == "astrom" ]  || [ $auto == "T" ]; then
     ec "#-----------------------------------------------------------------------------"
     module=fix_astrometry
     bdate=$(date "+%s.%N")       # start time/date
-    # estimate 0.3 min/frame; about 1/3 that of find_stars
-    wtime=$((1+$Nframes/5500)):00:00
-    ec "# for $Nframes frames set PBS walltime to $wtime"
     chk_prev make_medians
     
+    wtime=$((1+$Nframes/55500)):00:00
+    if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs; end_step
@@ -617,6 +619,8 @@ if [[ $1 =~ "subtract_med" ]]   || [ $1 == "submeds" ] ||[ $auto == "T" ]; then
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev fix_astrometry
     
+    wtime=$((3+$Nframes/80000)):00:00
+    if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
@@ -647,11 +651,10 @@ if [[ $1 =~ "check_st" ]]       || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
     ec "#-----------------------------------------------------------------------------"
     module=check_stars
     bdate=$(date "+%s.%N")       # start time/date
-    # estimate 0.3 min/frame; about 1/3 that of find_stars
-    wtime=$((1+$Nframes/5500)):00:00
-    ec "# for $Nframes frames set PBS walltime to $wtime"
     chk_prev subtract_medians
     
+    if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
+    wtime=$((5+$Nframes/12000)):00:00
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs; end_step
@@ -671,6 +674,8 @@ if [[ $1 =~ "check_astro" ]]    || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev subtract_medians
     
+    if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
+    wtime=$((5+$Nframes/100000)):00:00
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs; end_step
@@ -690,6 +695,8 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev subtract_medians
     
+    if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
+    wtime=$((5+$Nframes/25000)):00:00
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
@@ -721,14 +728,13 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     ec "#-----------------------------------------------------------------------------"
     ec "# >>>>  21. Build the tiles ... actually find_outliers    <<<<"
     ec "#-----------------------------------------------------------------------------"
-    module=find_outliers   # for python modules
+    module=find_outliers          # for python modules
     shtmpl=find_outliers_job.sh   # template for sh scripts
-    bdate=$(date "+%s.%N")       # start time/date
+    bdate=$(date "+%s.%N")        # start time/date
     chk_prev setup_tiles    
     
     rm -f run.outliers outliers.info outliers_*.sh outliers_*.??? 
-    rm -rf $odir/Rmasks/tile*  $odir/${PID}.irac.tile.*mosaic*.fits
-    #comm="rsync -au $pydir/$module.py ."; ec "$comm"; $comm
+#    rm -rf $odir/Rmasks/tile*  $odir/${PID}.irac.tile.*mosaic*.fits
         
     # Find number of jobs:
     parfile=$(grep '^IRACOutlierConfig ' $pars | cut -d\' -f2)
@@ -761,7 +767,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     done
     # check modules
     nmod=$(ls  outliers_*.sh  | wc -l)  # ; echo $nmod
-    nsub=$(cat run.outliers | wc -l)  # ; echo $nsub
+    nsub=$(cat run.outliers   | wc -l)  # ; echo $nsub
     if [ $nsub -eq $njobs ]; then 
         ec "# Wrote $nmod outliers_nn.sh modules"  # | tee -a $pipelog
     else

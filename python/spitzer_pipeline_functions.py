@@ -1189,10 +1189,6 @@ def run_mosaic_geometry(JobNo,JobList):
 #    os.system("echo {:} > ${:}; echo '=================' >> {:}".format(cmd, logfile, logfile)
     shutil.copy(logfile, outname)
     
-    #clean up
-    #logfileCMD = 'ls -lh ' + logfile
-    #os.system(logfileCMD)
-    
     cleanupCMD = 'rm -rf ' + processTMPDIR
 #    print(cleanupCMD)
     os.system(cleanupCMD)

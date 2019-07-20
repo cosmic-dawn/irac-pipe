@@ -3,7 +3,7 @@
 #PBS -N prepmos_@PID@
 #PBS -o prep_mosaic.out
 #PBS -j oe
-#PBS -l nodes=@NODE@:ppn=@NPROC@,walltime=9:00:00
+#PBS -l nodes=@NODE@:ppn=@PPN@,walltime=9:00:00
 #
 #-----------------------------------------------------------------------------
 # File:     prep_mosaic.sh @INFO@
