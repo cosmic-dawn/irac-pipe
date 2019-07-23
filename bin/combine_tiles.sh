@@ -77,24 +77,30 @@ args="-WEIGHT_SUFFIX _cov.fits -WEIGHT_TYPE MAP_WEIGHT -VERBOSE_TYPE LOG "
 resy="-RESAMPLE Y  -RESAMPLING_TYPE LANCZOS2 -SUBTRACT_BACK N"
 
 for c in $chans; do 
-	root=mosaic_ch${c}
+	root=mosaic_ch${c}    # root name for output files
 	list=$root.lst
 	ls $PID.irac.tile.*.${c}.mosaic.fits > $list        # build list of tiles
 	echo "## Found $(cat $list | wc -l) tiles for chan $c"
 	mos=${root}.fits
 	wgt=${mos%.fits}_cov.fits
 
-	# external head file:
-	rm ${mos%.fits}.head
-	dirmos=${PID}.irac.${c}.mosaic.fits
-	if [ -e $dirmos ]; then   	# extract ext. header from "direct" mosaic
-		echo "## found $dirmos - extract header kwds to build external header for stack"
-		fold $dirmos | head -33 | \
-			egrep 'NAXIS|CRVAL|CRPIX|CD|RADES|CTYPE|EQUIN' > $root.head
-	else                        # use default header
-		echo "## $dirmos not found - use default external header"
-		#cp $glhead ${mos%.fits}.head   # build link to global head file
-	fi
+#	# external (global) head file:
+#	rm ${mos%.fits}.head
+#	dirmos=${PID}.irac.${c}.mosaic.fits
+#	if [ -e $dirmos ]; then   	# extract ext. header from "direct" mosaic
+#		echo "## found $dirmos - extract header kwds to build external header for stack"
+#		fold $dirmos | head -33 | \
+#			egrep 'NAXIS|CRVAL|CRPIX|CD|RADES|CTYPE|EQUIN' > $root.head
+#	else                        # use default header
+#		echo "## $dirmos not found - use default external header"
+#		#cp $glhead ${mos%.fits}.head   # build link to global head file
+#	fi
+#
+#	if [ -e ${mos%.fits}.head ]; then
+#		echo "## Using global head file  ${mos%.fits}.head"
+#	else
+#		echo "## No glabal head file; using file coordinates"
+#	fi
 
 	comm="swarp @$list -IMAGEOUT_NAME $mos  -WEIGHTOUT_NAME $wgt  -RESCALE_WEIGHTS N  $args $resy"
 	echo $comm
