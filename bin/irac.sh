@@ -106,7 +106,6 @@ get_nproc() {
     cnodes | grep cores\] | cut -c2-5,23-25 | grep $NODE | cut -c5,6 ;
 }
 
-#if [[ $(hostname) =~ "candid" ]] || [[ $(hostname) == 'c02' ]]; then
 if [[ $(hostname) =~ "c" ]]; then
     if [ -e supermopex.py ]; then 
         Nproc=$(grep  '^Nproc'  supermopex.py | tr -s ' ' | cut -d\  -f3)
@@ -116,14 +115,15 @@ if [[ $(hostname) =~ "c" ]]; then
         Nthred=$(($(get_nproc)/2))
     fi
 else
-    echo "####"
-    echo "####----------------------------------------------------"
-    echo "####  ATTN: Should be running pipeline from login node!!"
-    echo "####----------------------------------------------------"
-    echo "####"
+    echo "     ####"
+    echo "     ####---------------------------------------------####"
+    echo "     ####  Attn: MUST run pipeline from login node!!  ####"
+    echo "     ####        Switching to DRY mode                ####"
+    echo "     ####---------------------------------------------####"
+    echo "     ####"
     Nproc=0    # to avoid giving unbound variable error 
     Nthred=0   # idem
-    if [ $dry == "F" ]; then exit 1; fi 
+    if [ $dry == "F" ]; then dry="T"; fi 
 fi
 
 wtime="18:00:00"   # default value
@@ -318,6 +318,15 @@ if [ -d $(echo $rdir | tr -d \/) ]; then
 else 
     ec "| ###### ./$rdir not found or contains no AORs ######"
 fi       
+if [ -e $odir/$ltab ]; then 
+	Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
+	Nframes1=$(grep '_I1_' $odir/$ltab | wc -l)
+	Nframes2=$(grep '_I2_' $odir/$ltab | wc -l)
+	Nframes3=$(grep '_I3_' $odir/$ltab | wc -l)
+	Nframes4=$(grep '_I4_' $odir/$ltab | wc -l)
+	ec "| - setup_pipeline already run; found $Nframes frames in Products/$ltab; "
+	ec "| - $Nframes1 in ch1, $Nframes2 in ch2,  $Nframes3 in ch3,  $Nframes4 ch4"
+fi
 
 ec "|-------  End parameter check  --------------------------"
 echo ""
@@ -345,8 +354,12 @@ if [[ ! -z $(ls $odir) ]]; then
     if [ $dry == 'F' ]; then askuser; fi
 fi
 
+str=""
+if [ $auto == "T" ]; then str="- in auto mode"; fi
+if [ $dry == "T" ];  then str="- in dry mode";  fi
+
 ec "#-----------------------------------------------------------------------------"
-ec "##  Begin Spitzer data reduction pipeline    "
+ec "##  Begin Spitzer data reduction pipeline $str  "
 
 #-----------------------------------------------------------------------------
 ### -  1. setup pipeline
@@ -378,11 +391,15 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
     
     # other results
     Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
+	Nframes1=$(grep '_I1_' $odir/$ltab | wc -l)
+	Nframes2=$(grep '_I2_' $odir/$ltab | wc -l)
+	Nframes3=$(grep '_I3_' $odir/$ltab | wc -l)
+	Nframes4=$(grep '_I4_' $odir/$ltab | wc -l)
     ec "# Num frames kept in $odir/$ltab: $Nframes"
-    ec "# - in Ch1:        $(grep ch1 $odir/$ltab | wc -l)"
-    ec "# - in Ch2:        $(grep ch2 $odir/$ltab | wc -l)"
-    ec "# - in Ch3:        $(grep ch3 $odir/$ltab | wc -l)"
-    ec "# - in Ch4:        $(grep ch4 $odir/$ltab | wc -l)"
+    ec "# - in Ch1:        $Nframes1)"
+    ec "# - in Ch2:        $Nframes2)"
+    ec "# - in Ch3:        $Nframes3)"
+    ec "# - in Ch4:        $Nframes4)"
     
     rm -f countFiles.dat
     cd $rdir
@@ -404,8 +421,6 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
     ec "# Number of AOR x valid channels:  $(($naor*4 -  $nzer))"
     
     end_step
-else
-    Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
 fi
 
 #-----------------------------------------------------------------------------
@@ -754,8 +769,8 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
         Ntile=$(sed "${nline}q;d" $tlf | awk '{print $2}')
         NChan=$(sed "${nline}q;d" $tlf | awk '{print $3}')
         Nfram=$(sed "${nline}q;d" $tlf | awk '{print $4}')
-        wtime=$((5+$Nfram/2300)):00:00
-		ppn=$((5+$Nfram/6000))
+        wtime=$((8+$Nfram/1400)):00:00
+		ppn=$((8+$Nfram/6000))
         sed -e "s|@WRK@|"$WRK"|" -e "s|@INFO@|$info|"  -e "s|@PID@|"$PID"|"  \
             -e "s|@JOB@|"$j"|"   -e "s|@PPN@|$ppn|"  -e "s|@WTIME@|$wtime|"  \
 			$bindir/$shtmpl > $outmodule  
@@ -837,7 +852,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
         ec "ATTN: found $nerr errors in .log files ... check file $errfile"
 		askuser
     else
-        ec "# ==> no other errors found ... mv make_tile_*.* to outliers dir "
+        ec "# ==> no other errors found "
         rm -f $errfile 
     fi
     
@@ -845,8 +860,9 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     nprods=$(ls $odir/$PID.irac.tile.*mosaic*.fits | wc -l)
     nexp=$(($nsub*6))
     if [ $nprods -eq $nexp ]; then
-        ec "# All jobs build all expected outputs: "
+        ec "# All jobs built all expected outputs: "
         ec "# Found all $nmos expected mosaic tiles, and all ancillary products"
+		ec "# ... mv outliers_*.* to outliers.files dir" 
         rm -f outliers.psb
     else
         ec "ATTN: Found only $nmos tiles of $nsub expected ..."
@@ -857,7 +873,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     rm addkeyword.txt run.outliers
 
 	# need this file for automatic continuation
-	touch $module.out   
+	echo "# Keep me for automatic check of combine_rmasks" > $module.out 
     
     end_step
 fi
@@ -886,6 +902,9 @@ if [[ $1 =~ "combine_rm" ]]     || [ $1 == "rmasks" ] || [ $auto == "T" ]; then
 
     # fix logfile (missing CRs)
     sed -i 's/s##/s\n##/' $module.out
+	for c in 1 2 3 4; do
+		echo "# Wrote $(grep _I${c}_ $module.out | wc -l) combined masks for ch${c}"
+	done
 
     nwarn=$(grep ERROR $module.out | wc -l)
     if [ $nwarn -ge 1 ]; then
@@ -922,7 +941,7 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
         outmodule=${module}_ch${chan}.sh
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
         Nfram=$(grep _I${chan}_ $odir/$ltab | wc -l)
-        wtime=$((5+$Nfram/1200)):00:00
+        wtime=$((5+$Nfram/1300)):00:00
 		if [ $Nfram -ge 25000 ]; then ppn=46; else ppn=30; fi
         #ec "# Chan $chan has $Nfram frames ==> set ppn=$ppn, PBS walltime to $wtime ..."
         sed -e "s|@WRK@|$WRK|" -e "s|@INFO@|$info|" -e "s|@PID@|$PID|"  -e "s|@CHAN@|$chan|"  \
