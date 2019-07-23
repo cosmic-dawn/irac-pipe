@@ -42,12 +42,12 @@
 #        adjust dynamic walltime,                                  (30.jun.19)
 # v2.22: more checks on find_outliers, and more                    (10.jul.19)
 # v2.23: find_outliers now parallelised by node                    (10.jul.19)
-# v2.24: dynamic ppn and walltime for outliers and more            (18.jul.19)
+# v2.24: dynamic ppn and walltime for outliers and more            (23.jul.19)
 #-----------------------------------------------------------------------------
 set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.24 (18.jul.19)"
+vers="2.24 (23.jul.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
