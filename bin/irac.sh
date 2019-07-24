@@ -709,13 +709,46 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
     module=setup_tiles
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev subtract_medians
+
+	# check input lists are present
+	nlists=$(ls $odir/$PID.irac.?.sub.lst | wc -l)
+	if [ $nlists -gt 0 ]; then
+		ec "# Found sub.lst lists for $nlists channels"
+	else
+		ec "# ERROR: no sub.lst files found ... quitting"
+	fi
     
     if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
-    wtime=$((5+$Nframes/25000)):00:00
+    wtime=$((5+$Nframes/12000)):00:00
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
-    
+
+    # check mopex logfiles (temp/mosaic_geom_*.log)
+#-#    RES=$(mktemp)
+#-#    for f in $tdir/mosaic_geom_*.log; do
+#-#        echo "$f: $(tail -5 $f | strings | tail -1)" >> $RES
+#-#    done
+#-#    nn=$(cat $RES | wc -l)
+#-#    nexp=$(grep $PID $tdir/AllTiles.tbl | wc -l)
+#-#    if [ $nn -eq $nexp ]; then
+#-#        ec "# Found all $nn expected mosaic_geom logfiles"
+#-#    else
+#-#        ec "# PROBLEM: Found only $nn mosaic_geom logfile for $nexp expected ..."
+#-#        askuser
+#-#    fi
+#-#    nbad=$(grep -v normally $RES | wc -l)
+#-#    if [ $nbad -eq 0 ]; then
+#-#        ec "# All mosaic_geom jobs terminated normally"
+#-#    else
+#-#        ec "## ERROR: imporoper termination of $nbad setup_tile job(s)"
+#-#        askuser
+#-#    fi
+
+	# check tile sub.lst files
+	nn=$(ls $odir/$PID.irac.tile.*.?.sub.lst | wc -l)
+	ec "# Found all $nn expected tile sub.lst files"
+
     # check TileListFile:
     tlf=${odir}/${PID}$(grep '^TileListFile ' $pars | cut -d\' -f2) 
     njobs=$(cat $tlf | grep $PID | wc -l)
@@ -727,8 +760,14 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
         ec "# PROBLEM: $tlf not found or Njobs = 0"
         askuser
     fi
-    
-    end_step
+
+    ec "# ==> move mosaic_geom_*.log files to mosaic_geom.files/ and cleanup"
+    if [ ! -d mosaic_geom.files ]; then mkdir mosaic_geom.files; fi
+    mv $tdir/mosaic_geom_*.log mosaic_geom.files
+    rm $RES
+
+
+   end_step
 fi
 
 

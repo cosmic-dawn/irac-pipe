@@ -48,6 +48,9 @@ fi
 
 mycd $WRK
 
+PID=$(grep  '^PIDname '    $pars | cut -d\' -f2)
+tdir=$(grep '^TMPDIR ' supermopex.py | cut -d\' -f2 | tr -d \/)
+
 # Build the command line
 comm="python $module.py"
 
@@ -68,19 +71,48 @@ $comm
 echo ">> ==========   End python output   ========== "
 echo ""
 
-logfile=$module.log
+# check log of fiducial_image_frame run done via mosaic.pl
+logfile=$module.log   
 fin=$(tail -1 $logfile)
 if [ $(echo $fin | grep terminated\ normally | wc -l) -eq 1 ]; then
-	echo ">> $fin"
+	echo ">> fiducial_image_frame ternimated normally"
 	errcode=0
 else
-	echo ">> WARNING: abnormal termination of mopex.pl ... check $logfile"
+	echo ">> WARNING: abnormal termination of fiducial_image_frame ... check $logfile"
 	errcode=3
 fi
+
+# check logs of mosaic_geometry
+
+# 1. check for expected number of logfiles
+nexp=$(grep tile $tdir/AllTiles.tbl | wc -l)  # number expected (I think)
+nout=$(ls $tdir/mosaic_geom_*.log | wc -l)    # number found
+if [ $nout -eq $nexp ]; then
+    echo "# Found all $nout expected mosaic_geom logfiles"
+else
+    echo "# PROBLEM: Found only $nout mosaic_geom logfile for $nexp expected ..."
+	errcode=4
+fi
+
+# 2. check last line for normal termination
+RES=$(mktemp)
+for f in $tdir/mosaic_geom_*.log; do
+    echo "$f: $(tail -5 $f | strings | tail -1)" >> $RES
+done
+
+nbad=$(grep -v normally $RES | wc -l)
+if [ $nbad -eq 0 ]; then
+    ec "# All mosaic_geom jobs terminated normally"
+	rm $RES
+else
+    ec "## ERROR: imporoper termination of $nbad setup_tile job(s)"
+    errcode=5
+fi
+
 
 echo ""
 echo "------------------------------------------------------------------"
 echo " >>>>  $module finished on $(date) - walltime: $(wt)  <<<<"
 echo "------------------------------------------------------------------"
 echo ""
-exit 0
+exit $errcode

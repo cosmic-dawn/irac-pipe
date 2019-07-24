@@ -1161,36 +1161,39 @@ def run_mosaic_geometry(JobNo,JobList):
     Tile = JobList['TileNumber'][JobNo]
     
     #temporary files
-    pid = os.getpid() #get the PID for temp files
-    processTMPDIR = scratch_dir_prefix(cluster) + 'tmpdir_mg_' + str(JobNo) + '/'
+#    pid = os.getpid() #get the PID for temp files
+    processTMPDIR = scratch_dir_prefix(cluster) + 'tmpdir_{:}_geom_{:}/'.format(PIDname, JobNo)
     os.system('mkdir -p ' + processTMPDIR)
     
-    #input lists
+    #input list
     imagelist = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     
     #output list
     geomlist = processTMPDIR + 'geom_' + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     
     #Run Mosaic
-    logfile = '{:}setup_tiles_{:}.log'.format(processTMPDIR, JobNo)
+    logfile = '{:}mosaic_geom_{:}.log'.format(processTMPDIR, JobNo)  
     cmd = 'mosaic.pl -n ' +IRACTileGeomConfig+ ' -I ' +imagelist+ ' -F' +JobList['FIF'][JobNo]+ ' -O ' +processTMPDIR+ ' > '+logfile+' 2>&1'
     #print(cmd)   ## DEBUG
     os.system(cmd)
     
+    ### NB if above fails, the following is not done, including 
     #count the number of files in mosaic geometry
     num_files = sum(1 for line in open(geomlist))
 
     # AMo: copy geomlist to OutputDIR
     outName = '{:}{:}.irac.tile.{:}.{:}.{:}.lst'.format(OutputDIR, PIDname, Tile, Ch, SubtractedSuffix)
-    print("copy {:} to {:}".format(geomlist, outName))
+#    print("copy {:} to {:}".format(geomlist, outName))
     shutil.copy(geomlist, outName)
-    # AMo: copy logfile to tempDIR, prepend command
-    outname = '{:}setup_tiles_{:}.log'.format(TMPDIR, JobNo)
+
+    # AMo: copy logfile to tempDIR [, prepend command]
+    outname = '{:}mosaic_geom_{:}.log'.format(TMPDIR, JobNo)
 #    os.system("echo {:} > ${:}; echo '=================' >> {:}".format(cmd, logfile, logfile)
     shutil.copy(logfile, outname)
-    
+
+    print("## Finished job {:}; found {:} files in tile {:} ch{:}".format(JobNo, num_files, Tile, Ch))
     cleanupCMD = 'rm -rf ' + processTMPDIR
-#    print(cleanupCMD)
+#    print(cleanupCMD)    ## DEBUG
     os.system(cleanupCMD)
     
     return(num_files)

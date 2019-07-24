@@ -15,7 +15,7 @@ rawlog = ascii.read(LogTable,format="ipac")
 logIRAC = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 # AMo: name of table with all tiles - before discarding those tiles with no data
-AllTiles = TMPDIR + 'AllTtiles.tbl'
+AllTiles = TMPDIR + 'AllTiles.tbl'
 locnode = os.uname().nodename.split('.')[0]  # name of process node
 
 # AMo: to avoid doing this all the time when testing bottom part.
