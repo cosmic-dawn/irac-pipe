@@ -725,25 +725,7 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
     chk_outputs
 
     # check mopex logfiles (temp/mosaic_geom_*.log)
-#-#    RES=$(mktemp)
-#-#    for f in $tdir/mosaic_geom_*.log; do
-#-#        echo "$f: $(tail -5 $f | strings | tail -1)" >> $RES
-#-#    done
-#-#    nn=$(cat $RES | wc -l)
-#-#    nexp=$(grep $PID $tdir/AllTiles.tbl | wc -l)
-#-#    if [ $nn -eq $nexp ]; then
-#-#        ec "# Found all $nn expected mosaic_geom logfiles"
-#-#    else
-#-#        ec "# PROBLEM: Found only $nn mosaic_geom logfile for $nexp expected ..."
-#-#        askuser
-#-#    fi
-#-#    nbad=$(grep -v normally $RES | wc -l)
-#-#    if [ $nbad -eq 0 ]; then
-#-#        ec "# All mosaic_geom jobs terminated normally"
-#-#    else
-#-#        ec "## ERROR: imporoper termination of $nbad setup_tile job(s)"
-#-#        askuser
-#-#    fi
+	# Now done in shell script
 
 	# check tile sub.lst files
 	nn=$(ls $odir/$PID.irac.tile.*.?.sub.lst | wc -l)
@@ -933,8 +915,7 @@ if [[ $1 =~ "combine_rm" ]]     || [ $1 == "rmasks" ] || [ $auto == "T" ]; then
     chk_prev find_outliers
 
     Nfram=$(cat $odir/$ltab | wc -l)
-	if [ $Nfram -ge 25000 ]; then ppn=33; else ppn=25; fi
-	echo $Nfram $ppn
+	if [ $Nfram -ge 25000 ]; then ppn=33; else ppn=25; fi  # echo $Nfram $ppn
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs

@@ -48,7 +48,7 @@ fi
 
 mycd $WRK
 
-PID=$(grep  '^PIDname '    $pars | cut -d\' -f2)
+PID=$(grep  '^PIDname 'supermopex.py | cut -d\' -f2)
 tdir=$(grep '^TMPDIR ' supermopex.py | cut -d\' -f2 | tr -d \/)
 
 # Build the command line
