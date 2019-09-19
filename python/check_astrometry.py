@@ -50,7 +50,7 @@ StarData['parallax'].fill_value=1e-8
 
 print("Starting astrometry check with " + str(Nproc) + " threads.")
 
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nhred)
 results = pool.map(partial(check_astrometry,log=log,Nrows=Nrows,JobList=JobList,AstrometryStars=StarData), range(0,Nrows))
 pool.close()
 

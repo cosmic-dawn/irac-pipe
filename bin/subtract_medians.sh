@@ -102,12 +102,18 @@ exit $exit
 # for each _bcd.fits frame there shoud be a _sub.fits and an _sbunc.fits
 data=$(grep ^RawDataDir supermopex.py | cut -d\' -f2 | tr -d \/)
 
+# dir of output medians (and averages) files
+#mdir=$(grep ^AORoutput supermopex.py | cut -d\' -f2 | tr -d \/)
+
 # loop over files
 for d in $data/r*; do       # split loop to avoid lists too long for OS
 	for f in ch?/bcd/SPI*_bcd.fits; do 
 		root=${f%_bcd.fits}
 		if [ ! -e ${root}_sub.fits ]; then 
 			echo "  ATTN: $d/${root}_sub.fits NOT FOUND"
+		fi
+		if [ ! -e ${root}_sbunc.fits ]; then 
+			echo "  ATTN: $d/${root}_sbunc.fits NOT FOUND"
 		fi
 	done
 done

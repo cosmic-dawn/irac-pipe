@@ -43,11 +43,12 @@
 # v2.22: more checks on find_outliers, and more                    (10.jul.19)
 # v2.23: find_outliers now parallelised by node                    (10.jul.19)
 # v2.24: dynamic ppn and walltime for outliers and more            (23.jul.19)
+# v2.25: improved counting in make_medians; param tuning;          (19.sep.19)
 #-----------------------------------------------------------------------------
-set -u        # exit if a variable is not defined
+#set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.24 (23.jul.19)"
+vers="2.25 (19.sep.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -85,16 +86,10 @@ if [ $1 == "pars" ] || [ $1 == "env" ]; then dry=T; fi
 # Check that $WRK and $NODE environment variables exist; set Nproc
 #-----------------------------------------------------------------------------
 
-if [ -z ${WRK+x} ]; then 
-    echo " ERROR: $WRK (workdir) variable not defined" 
+if [[ -z "$WRK" ]]; then 
+    echo " ERROR: \$WRK (workdir) environment variable not defined ... quitting" 
     exit 20
 fi
-
-#if [ -z ${use_rel+x} ]; then 
-#       echo "###  ATTN: setting use_rel=T: use release scripts; "
-#       echo "###  export use_rel=F to use development scripts" 
-#       use_rel=T
-#fi
 
 if [ ! -e $WRK/supermopex.py ]; then 
     NODE=$(echo $WRK | sed 's|/automnt||' | cut -c2-4)   # use local node by default
@@ -216,14 +211,14 @@ chk_outputs() {  # check outputs of module
     ec "# ==> no other errors found. "; rm -f $errfile 
 }
 end_step() {
-    ec "# Pipeline step $module finished successfully ... good job!!  <<<<"
+    ec "  >>>  $module finished successfully ... good job!!  <<<<"
     if [ $auto == "F" ]; then
         ec "#-----------------------------------------------------------------------------"
         exit 0
     fi
 }
 chkmeds() {  # check for presence of products of subtract_medians
-    # loop over files.aor...tbl tables
+    # loop over $mdir/files.aor...tbl tables
     for f in $mdir/files.*.tbl; do               
         aordir=$(tail -1 $f | cut -d\/ -f1-7)   #; echo $aordir; exit
         # loop over filenames found in files.aor.ch.#.tbl  file
@@ -302,10 +297,10 @@ if [ ! -d $tdir ]; then mkdir $tdir; fi
 
 ec "| - PID name:          $PID"
 ec "| - RootDIR:           $wdir"
-ec "| - RawDataDir:        \$RootDIR/$rdir/"
-ec "| - OutputDIR:         \$RootDIR/$odir/"
-ec "| - LogTable:          \$RootDIR/${odir}/$ltab"
-ec "| - TempDir:           \$RootDIR/$tdir/"
+#ec "| - RawDataDir:        \$RootDIR/$rdir/"
+#ec "| - OutputDIR:         \$RootDIR/$odir/"
+#ec "| - LogTable:          \$RootDIR/${odir}/$ltab"
+#ec "| - TempDir:           \$RootDIR/$tdir/"
 ec "| - Cluster is:        $(grep 'cluster ' $pars | cut -d\' -f2 )"
 ec "| - Nproc requested:   $(grep 'Nproc  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
 ec "| - Nthread requested: $(grep 'Nthred  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
@@ -391,34 +386,36 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
     
     # other results
     Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
-	Nframes1=$(grep '_I1_' $odir/$ltab | wc -l)
-	Nframes2=$(grep '_I2_' $odir/$ltab | wc -l)
-	Nframes3=$(grep '_I3_' $odir/$ltab | wc -l)
-	Nframes4=$(grep '_I4_' $odir/$ltab | wc -l)
+	Nframes1=$(grep '_I1_' $odir/$ltab | wc -l)  # or grep -v '^|' $odir/$PID.irac.1.bcd.lst
+	Nframes2=$(grep '_I2_' $odir/$ltab | wc -l)  # or grep -v '^|' $odir/$PID.irac.2.bcd.lst
+	Nframes3=$(grep '_I3_' $odir/$ltab | wc -l)  # or grep -v '^|' $odir/$PID.irac.3.bcd.lst
+	Nframes4=$(grep '_I4_' $odir/$ltab | wc -l)  # or grep -v '^|' $odir/$PID.irac.4.bcd.lst
     ec "# Num frames kept in $odir/$ltab: $Nframes"
-    ec "# - in Ch1:        $Nframes1)"
-    ec "# - in Ch2:        $Nframes2)"
-    ec "# - in Ch3:        $Nframes3)"
-    ec "# - in Ch4:        $Nframes4)"
+    ec "# - in Ch1:        $Nframes1"
+    ec "# - in Ch2:        $Nframes2"
+    ec "# - in Ch3:        $Nframes3"
+    ec "# - in Ch4:        $Nframes4"
     
-    rm -f countFiles.dat
-    cd $rdir
-    for d in r???*; do 
-        root=$(echo $d | cut -d\/ -f1 )
-        n1=$(ls $root/ch1/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
-        n2=$(ls $root/ch2/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
-        n3=$(ls $root/ch3/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
-        n4=$(ls $root/ch4/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
-        echo "$root $n1 $n2 $n3 $n4)" | \
-            awk '{printf "%-10s: %4i %4i %4i %4i  %5i\n", $1,$2,$3,$4,$5,$2+$3+$4+$5 }' \
-            >> ../countFiles.dat
-    done
+    #   Given the filtering done by setup_tiles.py, some frames can be excluded; so the counting
+    # below may be off
+#    rm -f countFiles.dat
+#    cd $rdir
+#    for d in r???*; do 
+#        root=$(echo $d | cut -d\/ -f1 )
+#        n1=$(ls $root/ch1/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
+#        n2=$(ls $root/ch2/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
+#        n3=$(ls $root/ch3/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
+#        n4=$(ls $root/ch4/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
+#        echo "$root $n1 $n2 $n3 $n4)" | \
+#            awk '{printf "%-10s: %4i %4i %4i %4i  %5i\n", $1,$2,$3,$4,$5,$2+$3+$4+$5 }' \
+#            >> ../countFiles.dat
+#    done
     cd $WRK
     
-    ec "# Details by AOR in countFiles.dat "
-    naor=$(cat countFiles.dat | wc -l)
-    nzer=$(grep -o \ 0\  countFiles.dat | wc -l)
-    ec "# Number of AOR x valid channels:  $(($naor*4 -  $nzer))"
+#    ec "# Details by AOR in countFiles.dat "
+#    naor=$(cat countFiles.dat | wc -l)
+#    nzer=$(grep -o \ 0\  countFiles.dat | wc -l)
+#    ec "# Number of AOR x valid channels:  $(($naor*4 -  $nzer))"
     
     end_step
 fi
@@ -613,7 +610,7 @@ if [[ $1 =~ "fix_astr" ]] || [ $1 == "astrom" ]  || [ $auto == "T" ]; then
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev make_medians
     
-    wtime=$((1+$Nframes/55500)):00:00
+    wtime=$((2+$Nframes/25000)):00:00
     if [ $Nframes -ge 100000 ]; then ppn=46; else ppn=30; fi 
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
@@ -729,13 +726,17 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
 
 	# check tile sub.lst files
 	nn=$(ls $odir/$PID.irac.tile.*.?.sub.lst | wc -l)
-	ec "# Found all $nn expected tile sub.lst files"
+	ng=$(wc $odir/$PID.irac.tile.*.?.sub.lst | grep -v \ 0\  | wc -l)
+	ng=$(($ng - 1))  # to remove the total line
+	ec "# Found all $nn expected tile sub.lst files; "
+	ec "# $ng of them contain data (are touched by 1 or more frames) "
 
     # check TileListFile:
     tlf=${odir}/${PID}$(grep '^TileListFile ' $pars | cut -d\' -f2) 
+	tsize=$(grep TileSize $WRK/supermopex.py | tr -s \  | cut -d \  -f3)
     njobs=$(cat $tlf | grep $PID | wc -l)
     if [ -e $tlf ] && [ $njobs -gt 0 ]; then
-        ec "# ==>$(grep Split\ mosaic $module.out | cut -c2-99)"
+        ec "# ==>$(grep Split\ mosaic $module.out | cut -c2-99) of $tsize pix"
         ec "# ==>$(grep Wrote\ FIF    $module.out | cut -c2-99)"
         ec "# ==> Built mosaic tile list with $njobs entries (jobs)"
     else
@@ -746,10 +747,8 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
     ec "# ==> move mosaic_geom_*.log files to mosaic_geom.files/ and cleanup"
     if [ ! -d mosaic_geom.files ]; then mkdir mosaic_geom.files; fi
     mv $tdir/mosaic_geom_*.log mosaic_geom.files
-    rm $RES
 
-
-   end_step
+	end_step
 fi
 
 
@@ -769,8 +768,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     bdate=$(date "+%s.%N")        # start time/date
     chk_prev setup_tiles    
     
-    rm -f run.outliers outliers.info outliers_*.sh outliers_*.??? 
-#    rm -rf $odir/Rmasks/tile*  $odir/${PID}.irac.tile.*mosaic*.fits
+    rm -f run.outliers outliers.info outliers_*.sh
         
     # Find number of jobs:
     parfile=$(grep '^IRACOutlierConfig ' $pars | cut -d\' -f2)
@@ -781,6 +779,14 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     ec "# outliers config file: $parfile"
     ec "# outliers tile list:   $tlf, with $njobs jobs"
     ec "# template for shell scripts is \$bindir/$shtmpl "
+
+	if [ -d $rdir/Rmasks ]; then
+		ec "# ATTN: $rdir/Rmasks dir already exists ... move it away?"
+		askuser
+		comm="mv $rdir/Rmasks  $rdir/Rmasks_old"
+		echo $comm
+		$comm
+	fi
     
     for j in $(seq 0 $(($njobs-1))); do
     #for j in $(seq 2); do    # for testing
@@ -790,14 +796,14 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
         Ntile=$(sed "${nline}q;d" $tlf | awk '{print $2}')
         NChan=$(sed "${nline}q;d" $tlf | awk '{print $3}')
         Nfram=$(sed "${nline}q;d" $tlf | awk '{print $4}')
-        wtime=$((8+$Nfram/1400)):00:00
-		ppn=$((8+$Nfram/6000))
+        wtime=$((8+$Nfram/1500)):00:00
+		ppn=$((8+$Nfram/5000))
         sed -e "s|@WRK@|"$WRK"|" -e "s|@INFO@|$info|"  -e "s|@PID@|"$PID"|"  \
             -e "s|@JOB@|"$j"|"   -e "s|@PPN@|$ppn|"  -e "s|@WTIME@|$wtime|"  \
 			$bindir/$shtmpl > $outmodule  
         chmod 755 $outmodule
         echo " $j $Ntile $NChan $Nfram $outmodule $ppn $wtime " | \
-            awk '{printf "# job %3d for tile %2d ch %1d with %5d frames ==> %-15s with %2d ppn, wt %2d hr\n", $1,$2,$3,$4,$5,$6,$7}' | \
+            awk '{printf "# job %3d for tile %3d ch %1d with %5d frames ==> %-15s with %2d ppn, wt %2d hr\n", $1,$2,$3,$4,$5,$6,$7}' | \
             tee -a outliers.info
         echo "qsub $outmodule; sleep 2" >> run.outliers
     done
@@ -813,11 +819,15 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     
     if [ $dry == "T" ]; then ec "----  EXITING PIPELINE DRY MODE         ---- "; exit 10; fi
     
+    # remove any previous files still laying around
+	rm -rf $odir/Rmasks/tile*  $odir/${PID}.irac.tile.*.?.*mosaic*.fits outliers_*.??? 
+
     # submit the jobs and begin the wait loop
     ec "# Submit $nsub outliers_nn files ... " 
-    source run.outliers | tee submit_outliers.log
-    grep -v master submit_outliers.log > submit.errs   # to look for errors in submission
-    nerr=$(cat submit.errs | wc -l)
+#    source run.outliers 2> tee submit_outliers.log
+#    grep -v master submit_outliers.log > submit.errs   # to look for errors in submission
+    source run.outliers 2> submit_outliers.errs   # to look for errors in submission
+    nerr=$(cat submit_outliers.errs | wc -l)
     if [ $nerr -ge 1 ]; then 
         ec "# WARNING: there are some submission errors - check submit_outliers.log ... continuing"
     else
@@ -866,8 +876,8 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     # 3. check .log files (from mopex) for other errors
     errfile=outliers.errs
     # Need to compesate for "allowed" errors in mosaic_combine (last mopex pipeline step with mem leak)
-    grep -i -n -e Error -e Exception -e MALLOC outliers_*.log | grep -v -e mosaic_combine -e fsts > $errfile
-    grep ^System\ Exit  outliers_*.log | grep -v ' 0' | grep -v mosaic_combine >> $errfile
+    grep -n -i -e Error -e Exception -e MALLOC outliers_*.log  > $errfile
+    grep -n ^System\ Exit  outliers_*.log | grep -v ' 0'      >> $errfile
     nerr=$(cat $errfile | wc -l)
     if [ $nerr -gt 0 ]; then
         ec "ATTN: found $nerr errors in .log files ... check file $errfile"
@@ -915,13 +925,18 @@ if [[ $1 =~ "combine_rm" ]]     || [ $1 == "rmasks" ] || [ $auto == "T" ]; then
     chk_prev find_outliers
 
     Nfram=$(cat $odir/$ltab | wc -l)
-	if [ $Nfram -ge 25000 ]; then ppn=33; else ppn=25; fi  # echo $Nfram $ppn
+	if [ $Nfram -ge 25000 ]; then 
+		ppn=33; wtime=8:00:00
+	else 
+		ppn=25; wtime=3:00:00
+	fi  # echo $Nfram $ppn
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
 
     # fix logfile (missing CRs)
     sed -i 's/s##/s\n##/' $module.out
+	# extract num jobs finished per channel
 	for c in 1 2 3 4; do
 		echo "# Wrote $(grep _I${c}_ $module.out | wc -l) combined masks for ch${c}"
 	done
@@ -1060,7 +1075,7 @@ fi
 ### - NN. combine tiles into mosaics (swarp)
 #-----------------------------------------------------------------------------
 
-if [[ $1 =~ "combine_tiles" ]]  || [ $1 == "combTiles" ] || [ $auto == "T" ]; then
+if [[ $1 =~ "swarp" ]]  || [ $1 == "swarpTiles" ] || [ $auto == "T" ]; then
 
     if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
     ec "#-----------------------------------------------------------------------------"
@@ -1069,7 +1084,7 @@ if [[ $1 =~ "combine_tiles" ]]  || [ $1 == "combTiles" ] || [ $auto == "T" ]; th
     module=combine_tiles
     #chk_prev  ... n/a for this - do by hand
     bdate=$(date "+%s.%N")       # start time/date
-    nn=$(ls make_tiles/make_tile_*.out | wc -l)
+    nn=$(ls outliers.files/outliers_*.out | wc -l)
     if [ $nn -eq 0 ]; then
         ec "ERROR: No make_tile_nnn.out found ... previous step not complete? "
         askuser

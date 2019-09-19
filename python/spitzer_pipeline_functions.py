@@ -966,35 +966,44 @@ def make_median_image(JobNo, JobList, log, AORlog, debug):
     maskImages = np.zeros([Nframes,256,256],dtype=np.int) #image masks
     DelayTimes = np.zeros([Nframes],dtype=np.double) # list of frame delay times
 
-    #Figure out the number of repeat observations
+    # AMo: For each obs, there are Nreps frames obtained at each of Npos positions. The Nreps have
+    # increasing exp times; we assume that the first and shortest is the same for all positions.
+    # There are cases of missing frames; these are solved by hand, by commenting all the frames at
+    # that position.
+    # Figure out the number of repeat observations
     if HDR == 'True':
-        #If HDR mode just look for different exposure times
-        Exptimes = list(set(log['ExpTime'][LogIDX]))
-        Nrepeats = len(Exptimes)
+        #If HDR mode just look for different exposure times ... fails when these are all the same
+        #Exptimes = list(set(log['ExpTime'][LogIDX]))
+        #Nreps = len(Exptimes)
+        # ... rather find num occurrences of minimum time, gives num pos
+        Alltimes = log['ExpTime'][LogIDX]
+        Tmin  = Alltimes.min()  # assume always same for each series of repeats
+        Nposn = list(Alltimes).count(Tmin)  # Number of positions
+        Nreps = int(len(Alltimes)/Nposn)     # Number of repeats
     else:
         #In normal mode just find the frames with long frame delays, repeats typically have ~2s delays.
         LongDelays =  np.where(log['FrameDelay'][LogIDX] > 6)  #Find the long delays
         NumLongDelay = len(log['FrameDelay'][LongDelays]) #Count them
-        Nrepeats = int(Nframes/NumLongDelay) #calculate the number of repeats
+        Nreps = int(Nframes/NumLongDelay) #calculate the number of repeats
 
-    NrepFrames = int(Nframes/Nrepeats) #Calculate the number of repeated frames
+    NrepFrames = int(Nframes/Nreps) #Calculate the number of repeated frames
 
     if HDR == 'True':
-        print('## AOR {:} Ch {:} in HDR mode; has {:} obs at each position'.format(AOR, Ch, Nrepeats))
+        print(' - AOR {:} Ch {:} in HDR mode; has {:} obs at each position'.format(AOR, Ch, Nreps))
         if debug == 1: print("   exp times are: {:}".format(Exptimes))
     else:
-        print('## AOR {:} Ch {:} in STD mode; has {:} obs at each position,'.format(AOR, Ch, Nrepeats), end=' ')
-        if Nrepeats > 1:
+        print('## AOR {:} Ch {:} in STD mode; has {:} obs at each position,'.format(AOR, Ch, Nreps), end=' ')
+        if Nreps > 1:
             print('has {:} frames, {:} per repeat.'.format(Nframes, NrepFrames))
         else:
             print('has {:} frames.'.format(Nframes))
 
     #lets do some error checking
-    if (Nframes == NrepFrames*Nrepeats):
+    if (Nframes == NrepFrames*Nreps):
         if (debug == 1): print('DEBUG: Found expected number of frames .... continue')
     else:
-        print('WARNING: Total number of frames {:}, number of repeats {:}, and repeats per frame {:} disagree!'.format(Nframes, NrepFrames, Nrepeats))
-        print('         Found {:} frames, expected {:} '.format(Nframes, NrepFrames*Nrepeats))
+        print('WARNING: Total number of frames {:}, number of repeats {:}, and repeats per frame {:} disagree!'.format(Nframes, NrepFrames, Nreps))
+        print('         Found {:} frames, expected {:} '.format(Nframes, NrepFrames*Nreps))
 
 
     for frame in range(0,Nframes):
@@ -1056,20 +1065,20 @@ def make_median_image(JobNo, JobList, log, AORlog, debug):
     repNameList=list()
     frameIDX = 0
     for imIDX in range(0,NrepFrames):
-        for repIDX in range(0,Nrepeats):
+        for repIDX in range(0,Nreps):
             repNameList.append([files[frameIDX],DCElist[frameIDX],AOR,Ch,repeats[repIDX],repIDX])
             frameIDX +=1
     AORsubtractTable=Table(rows=repNameList,names=['Filename','DCE','AOR','Channel','RepName','RepIndex'])
     AORsubtractFile = AORoutput + 'files.' + str(AOR) + '.ch.' + str(Ch) + '.tbl'
     ascii.write(AORsubtractTable,AORsubtractFile,format="ipac",overwrite=True)
 
-    if (Nrepeats > 1):
+    if (Nreps > 1):
         #reorder data into repeates
         
         #Declare new arrays with correct shapes
-        ReorgImageData  = ma.zeros([Nrepeats,NrepFrames,256,256],dtype=np.double) #data images
-        ReorgIvarImages = np.zeros([Nrepeats,NrepFrames,256,256],dtype=np.double) #inverse variance images
-        ReorgMaskImages = np.zeros([Nrepeats,NrepFrames,256,256],dtype=np.int) #image masks
+        ReorgImageData  = ma.zeros([Nreps, NrepFrames, 256, 256],dtype=np.double) #data images
+        ReorgIvarImages = np.zeros([Nreps, NrepFrames, 256, 256],dtype=np.double) #inverse variance images
+        ReorgMaskImages = np.zeros([Nreps, NrepFrames, 256, 256],dtype=np.int) #image masks
         
         #reorganize the data
         repIDX=0
@@ -1079,14 +1088,14 @@ def make_median_image(JobNo, JobList, log, AORlog, debug):
             ReorgIvarImages[repIDX,imIDX] = ivarImages[frame]
             ReorgMaskImages[repIDX,imIDX] = maskImages[frame]
             
-            #index rep counter and check if its greater than Nrepeats
+            #index rep counter and check if its greater than Nreps
             repIDX+=1
-            if (repIDX >= Nrepeats):
+            if (repIDX >= Nreps):
                 imIDX+=1  #increase frame index counter
                 repIDX=0
     
         #loop over repeates to clip outliers then make median image
-        for repIDX in range(0,Nrepeats):
+        for repIDX in range(0,Nreps):
             #calculate median images and stdev
             median_image = ma.median(ReorgImageData[repIDX],axis=0)
             stdev_image  = robust.mad(np.nan_to_num(ReorgImageData[repIDX]),axis=0)
@@ -1171,7 +1180,7 @@ def run_mosaic_geometry(JobNo,JobList):
     #output list
     geomlist = processTMPDIR + 'geom_' + PIDname + '.irac.' + str(Ch) + '.' + SubtractedSuffix + '.lst'
     
-    #Run Mosaic
+    #Run mosaic.pl
     logfile = '{:}mosaic_geom_{:}.log'.format(processTMPDIR, JobNo)  
     cmd = 'mosaic.pl -n ' +IRACTileGeomConfig+ ' -I ' +imagelist+ ' -F' +JobList['FIF'][JobNo]+ ' -O ' +processTMPDIR+ ' > '+logfile+' 2>&1'
     #print(cmd)   ## DEBUG
@@ -1183,7 +1192,6 @@ def run_mosaic_geometry(JobNo,JobList):
 
     # AMo: copy geomlist to OutputDIR
     outName = '{:}{:}.irac.tile.{:}.{:}.{:}.lst'.format(OutputDIR, PIDname, Tile, Ch, SubtractedSuffix)
-#    print("copy {:} to {:}".format(geomlist, outName))
     shutil.copy(geomlist, outName)
 
     # AMo: copy logfile to tempDIR [, prepend command]
@@ -1383,6 +1391,9 @@ def combine_rmasks(JobNo, RmaskFileList, log):
         imageHDU[0].data = Rmask_data
         imageHDU.writeto(outputRMask,overwrite='True')
         imageHDU.close()
+        # check that array is not null everywhere
+        if (Rmask_data.max() == 0):
+            print("PROBLEM: max is null for frame {:}".format(Rmask_data))
         print("## Finished job {:} with {:} tiles - wrote combined Rmask to {:}".format(JobNo, Nfiles, outputRMask))
 
 #---------------------------------------------------------------------------------------------------
@@ -1491,6 +1502,6 @@ def build_mosaic(Ch):
         # clean up:  done in shell script if all products found
         cleanupCMD = 'rm -rf ' + processTMPDIR
         # print(cleanupCMD)
-        os.system(cleanupCMD)
+#        os.system(cleanupCMD)
 
 #---------------------------------------------------------------------------------------------------

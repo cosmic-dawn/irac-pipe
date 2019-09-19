@@ -1,4 +1,3 @@
-
 #!/opt/local/bin/python
 
 import re,os,shutil
@@ -48,7 +47,7 @@ for i in range(0,Nfiles):
 
 #add in some columns from the log first, then make table with astrometry
 OutputRmaskTable = Table(rows=OutputRmaskList,names=['Filename','DCE'])
-ascii.write(OutputRmaskTable, "OutputRmasks.tbl", format="ipac",overwrite=True) 
+ascii.write(OutputRmaskTable, TMPDIR+"OutputRmasks.tbl", format="ipac",overwrite=True) 
 
 #Nproc=1   #for testing
 print("# Combining RMask files using {:} threads".format(Nthred))

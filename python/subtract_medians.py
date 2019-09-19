@@ -45,7 +45,7 @@ print("Wrote job list {} with {} jobs".format(JobListName, Njobs))
 
 print("Subtracting medians with " + str(Nproc) + " threads.")
 
-pool = mp.Pool(processes=Nproc)
+pool = mp.Pool(processes=Nthred)
 results = pool.map(run_subtractmedians, range(0,Njobs))
 
 print("Done!")

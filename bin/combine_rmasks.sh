@@ -70,6 +70,10 @@ $comm
 echo ">> ==========   End python output   ========== "
 echo ""
 
+echo ">> Check that in the end there is a rmask.fits file for each _bcd.fits frame"
+
+
+
 echo ""
 echo "------------------------------------------------------------------"
 echo " >>>>  $module finished on $(date) - walltime: $(wt)  <<<<"

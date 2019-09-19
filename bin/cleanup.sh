@@ -15,6 +15,8 @@
 #-----------------------------------------------------------------------------
 
 #cd $WRK
+echo $PWD
+
 if [ -e supermopex.py ]; then
 	odir=$(grep 'OutputDIR  =' supermopex.py | cut -d\' -f2 | tr -d \/)
 	rdir=$(grep 'RawDataDir =' supermopex.py | cut -d\' -f2 | tr -d \/)

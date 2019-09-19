@@ -77,7 +77,7 @@ args="-WEIGHT_SUFFIX _cov.fits -WEIGHT_TYPE MAP_WEIGHT -VERBOSE_TYPE LOG "
 resy="-RESAMPLE Y  -RESAMPLING_TYPE LANCZOS2 -SUBTRACT_BACK N"
 
 for c in $chans; do 
-	root=mosaic_ch${c}    # root name for output files
+	root=${PID}.tilemosaic.${c}    # root name for output files
 	list=$root.lst
 	ls $PID.irac.tile.*.${c}.mosaic.fits > $list        # build list of tiles
 	echo "## Found $(cat $list | wc -l) tiles for chan $c"

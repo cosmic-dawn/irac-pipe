@@ -21,10 +21,10 @@ run_mosaic_coadder = 1
 run_absolute_minimum_mosaic = 0
 run_mosaic_combiner = 1
 run_mosaic_medfilter = 0
-run_median_mosaic = 1
+#run_median_mosaic = 1
 create_rmask_mosaic = 0
-create_unc_mosaic = 1
-create_std_mosaic = 1
+#create_unc_mosaic = 1
+#create_std_mosaic = 1
 create_dual_outlier_mosaic = 0
 create_outlier_mosaic = 0
 make_array_corr_files = 0
@@ -33,13 +33,13 @@ make_array_corr_mosaic = 0
 sigma_weighted_coadd = 0
 keep_coadded_tiles = 1
 overwrite_dmask = 0
-delete_intermediate_files = 1
+delete_intermediate_files = 0
 
 
 ###### Multi-processing Parameters ######
 do_multiprocess = 'manual'
 # this should be the same as in make_tile.sh
-ncpu_multiprocess = 36
+ncpu_multiprocess = 24
 
 
 
@@ -119,15 +119,15 @@ Threshold_Type = 'simple',
 &END
 
 &MOSAICCOVGIN
-TILEMAX_Y = 2000,
-TILEMAX_X = 2000,
+TILEMAX_Y = 500,
+TILEMAX_X = 500,
 &END
 
 &MOSAICDUALOUTLIERIN
-TILE_YSIZ = 2000,
+TILE_YSIZ = 500,
 MAX_OUTL_FRAC = 0.5,
 MAX_OUTL_IMAGE = 1,
-TILE_XSIZ = 2000,
+TILE_XSIZ = 500,
 &END
 
 &LEVEL
@@ -136,18 +136,18 @@ Threshold_Ratio = 0.5,
 
 &MOSAICOUTLIERIN
 MIN_PIX_NUM = 3,
-TILE_YSIZ = 2000,
+TILE_YSIZ = 500,
 TOP_THRESHOLD = 3.0,
 BOTTOM_THRESHOLD = 3.0,
 THRESH_OPTION = 1,
-TILE_XSIZ = 2000,
+TILE_XSIZ = 500,
 &END
 
 &MOSAICBOXOUTLIERIN
 BOX_Y = 3,
-TILE_YSIZ = 2000,
+TILE_YSIZ = 500,
 BOX_X = 3,
-TILE_XSIZ = 2000,
+TILE_XSIZ = 500,
 BOX_MEDIAN_BIAS = 1,
 &END
 
@@ -175,8 +175,8 @@ Min_Single_Coverage = 0.95,
 &MOSAICCOADDIN
 USE_INT_TIME_KWD = 1,
 INTEG_TIME_KWD = 'EXPTIME',
-TILEMAX_Y = 2000,
-TILEMAX_X = 2000,
+TILEMAX_Y = 500,
+TILEMAX_X = 500,
 &END
 
 &MOSAICCOMBINER
