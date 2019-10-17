@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N rmasks_@PID@
-#PBS -o combine_rmasks.out
+#PBS -o $HOME/combine_rmasks.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #

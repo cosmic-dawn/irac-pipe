@@ -15,9 +15,6 @@ def run_checkstars(JobNo):
 rawlog = ascii.read(LogTable,format="ipac")
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
-#Get the size of the array
-Nrows = log['Filename'].size
-
 #read in the AOR properties log
 AORlog = ascii.read(AORinfoTable,format="ipac")
 
@@ -25,14 +22,16 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log,AORlog)
 Njobs = len(JobList)
 
-Nthread = int(Nthred/2)
-print("Checking stars with {:} threads.".format(Nthred))
+Nthred = int(Nthred/2)
+print("Starting check_stars: {:} jobs with {:} threads.".format(Njobs, Nthred))
 
 pool = mp.Pool(processes=Nthred)
 results = pool.map(run_checkstars, range(0,Njobs))
 
 print("Done!")
 
+#Get the size of the array
+#Nrows = log['Filename'].size
 #for i in range(0,Nrows):
 #findstar(5,log=log,Nrows=Nrows,BrightStars=BrightStars,AstrometryStars=AstrometryStars)
 #        print str(i+1) + ' of ' + str(Nrows)

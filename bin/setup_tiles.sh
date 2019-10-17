@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N preTiles_@PID@
-#PBS -o setup_tiles.out
+#PBS -o $HOME/setup_tiles.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #
@@ -48,8 +48,9 @@ fi
 
 mycd $WRK
 
-PID=$(grep  '^PIDname 'supermopex.py | cut -d\' -f2)
-tdir=$(grep '^TMPDIR ' supermopex.py | cut -d\' -f2 | tr -d \/)
+PID=$(grep  '^PIDname ' supermopex.py | cut -d\' -f2)
+tdir=$(grep '^TMPDIR '  supermopex.py | cut -d\' -f2 | tr -d \/)
+odir=$(grep '^OutputDIR ' supermopex.py | cut -d\' -f2 | tr -d \/)
 
 # Build the command line
 comm="python $module.py"
@@ -64,6 +65,9 @@ if [ $dry -eq 1 ]; then
 fi
 
 # Now do the work
+echo ""
+echo ">> input lists are $PID.irac.?.sub.lst with these entries:"
+wc $odir/$PID.irac.?.sub.lst
 echo ""
 echo ">> ==========  Begin python output  ========== "
 

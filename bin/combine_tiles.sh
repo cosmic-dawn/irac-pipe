@@ -1,13 +1,15 @@
 #!/bin/sh
 #PBS -S /bin/bash
 #PBS -N CombTiles_@PID@
-#PBS -o combine_tiles.out
+#PBS -o $HOME/combine_tiles.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=18,walltime=12:00:00
 #
 #-----------------------------------------------------------------------------
-# File:     comb_tiles.sh @INFO@
-# Purpose:  use swarp to combine tiles into final mosaics
+# File:     combine_tiles.sh @INFO@
+# Purpose:  use swarp to combine tiles into final mosaics; the _cov files are
+#           used as weight maps (NB: the _cov files from mopex count the number
+#           of frames that went into the pixes, weighted by the exposure time.
 #-----------------------------------------------------------------------------
 # 
 set -u 
@@ -83,24 +85,6 @@ for c in $chans; do
 	echo "## Found $(cat $list | wc -l) tiles for chan $c"
 	mos=${root}.fits
 	wgt=${mos%.fits}_cov.fits
-
-#	# external (global) head file:
-#	rm ${mos%.fits}.head
-#	dirmos=${PID}.irac.${c}.mosaic.fits
-#	if [ -e $dirmos ]; then   	# extract ext. header from "direct" mosaic
-#		echo "## found $dirmos - extract header kwds to build external header for stack"
-#		fold $dirmos | head -33 | \
-#			egrep 'NAXIS|CRVAL|CRPIX|CD|RADES|CTYPE|EQUIN' > $root.head
-#	else                        # use default header
-#		echo "## $dirmos not found - use default external header"
-#		#cp $glhead ${mos%.fits}.head   # build link to global head file
-#	fi
-#
-#	if [ -e ${mos%.fits}.head ]; then
-#		echo "## Using global head file  ${mos%.fits}.head"
-#	else
-#		echo "## No glabal head file; using file coordinates"
-#	fi
 
 	comm="swarp @$list -IMAGEOUT_NAME $mos  -WEIGHTOUT_NAME $wgt  -RESCALE_WEIGHTS N  $args $resy"
 	echo $comm

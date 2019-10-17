@@ -1189,6 +1189,7 @@ def run_mosaic_geometry(JobNo,JobList):
     ### NB if above fails, the following is not done, including 
     #count the number of files in mosaic geometry
     num_files = sum(1 for line in open(geomlist))
+    print("Using input list {:} with {:} entries".format(imagelist, num_files))
 
     # AMo: copy geomlist to OutputDIR
     outName = '{:}{:}.irac.tile.{:}.{:}.{:}.lst'.format(OutputDIR, PIDname, Tile, Ch, SubtractedSuffix)
@@ -1501,7 +1502,7 @@ def build_mosaic(Ch):
     else:
         # clean up:  done in shell script if all products found
         cleanupCMD = 'rm -rf ' + processTMPDIR
-        # print(cleanupCMD)
-#        os.system(cleanupCMD)
+        print(cleanupCMD)
+        os.system(cleanupCMD)
 
 #---------------------------------------------------------------------------------------------------

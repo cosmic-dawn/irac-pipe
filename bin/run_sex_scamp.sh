@@ -1,7 +1,7 @@
 #!/bin/sh
 #PBS -S /bin/bash
 #PBS -N s_scamp_@PID@
-#PBS -o s_scamp.out
+#PBS -o $HOME/s_scamp.out
 #PBS -j oe
 #PBS -l nodes=1,walltime=2:00:00
 #-----------------------------------------------------------------------------

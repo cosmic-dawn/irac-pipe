@@ -23,7 +23,7 @@ if not os.path.isfile(AllTiles):
     #make the common FIF for the mosaics
     FIFlist = OutputDIR + PIDname + '.irac.FIF.' + corDataSuffix + '.lst' 
 
-    # now run fiducial_frame.pl (wrapper forFIF  fiducial_image_frame) to build header_list.tbl
+    # now run fiducial_frame.pl (wrapper for FIF fiducial_image_frame) to build header_list.tbl
     print('# Run FIF to figure out mosaic geometry (build {:}header_list.tbl)'.format(TMPDIR))
     logfile = 'setup_tiles.log'
     cmd = 'mosaic.pl -n irac_FIF.nl -I {:} -O {:} > {:} 2>&1'.format(FIFlist, TMPDIR , logfile)

@@ -44,11 +44,12 @@
 # v2.23: find_outliers now parallelised by node                    (10.jul.19)
 # v2.24: dynamic ppn and walltime for outliers and more            (23.jul.19)
 # v2.25: improved counting in make_medians; param tuning;          (19.sep.19)
+# v2.26: torque outs to $HOME then moved, and other minor fixes;   (17.oct.19)
 #-----------------------------------------------------------------------------
 #set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.25 (19.sep.19)"
+vers="2.26 (17.oct.19)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -185,7 +186,8 @@ write_module() {  # write local verions of py and sh modules
     if [ -e $module.out ]; then rm $module.out; fi 
     ecn "# Submit $module file ... "; qsub $module.sh | tee -a $pipelog
     ec "# -- Wait for job to finish --"; sleep 20
-    while :; do [ -e $module.out ] && break; sleep 30; done
+    while :; do [ -e $HOME/$module.out ] && break; sleep 30; done
+	mv $HOME/$module.out .
     chmod 644 $module.out
     ec "# Job $module finished - PBS $(grep RESOURCESUSED $module.out | cut -d\, -f4)"
 }
@@ -315,10 +317,10 @@ else
 fi       
 if [ -e $odir/$ltab ]; then 
 	Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
-	Nframes1=$(grep '_I1_' $odir/$ltab | wc -l)
-	Nframes2=$(grep '_I2_' $odir/$ltab | wc -l)
-	Nframes3=$(grep '_I3_' $odir/$ltab | wc -l)
-	Nframes4=$(grep '_I4_' $odir/$ltab | wc -l)
+	Nframes1=$(grep 'I1_' $odir/$ltab | wc -l)
+	Nframes2=$(grep 'I2_' $odir/$ltab | wc -l)
+	Nframes3=$(grep 'I3_' $odir/$ltab | wc -l)
+	Nframes4=$(grep 'I4_' $odir/$ltab | wc -l)
 	ec "| - setup_pipeline already run; found $Nframes frames in Products/$ltab; "
 	ec "| - $Nframes1 in ch1, $Nframes2 in ch2,  $Nframes3 in ch3,  $Nframes4 ch4"
 fi
@@ -386,36 +388,15 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
     
     # other results
     Nframes=$(grep -v '^|' $odir/$ltab | wc -l)
-	Nframes1=$(grep '_I1_' $odir/$ltab | wc -l)  # or grep -v '^|' $odir/$PID.irac.1.bcd.lst
-	Nframes2=$(grep '_I2_' $odir/$ltab | wc -l)  # or grep -v '^|' $odir/$PID.irac.2.bcd.lst
-	Nframes3=$(grep '_I3_' $odir/$ltab | wc -l)  # or grep -v '^|' $odir/$PID.irac.3.bcd.lst
-	Nframes4=$(grep '_I4_' $odir/$ltab | wc -l)  # or grep -v '^|' $odir/$PID.irac.4.bcd.lst
+	Nframes1=$(grep 'I1_' $odir/$ltab | wc -l)  
+	Nframes2=$(grep 'I2_' $odir/$ltab | wc -l)  
+	Nframes3=$(grep 'I3_' $odir/$ltab | wc -l)  
+	Nframes4=$(grep 'I4_' $odir/$ltab | wc -l)  
     ec "# Num frames kept in $odir/$ltab: $Nframes"
     ec "# - in Ch1:        $Nframes1"
     ec "# - in Ch2:        $Nframes2"
     ec "# - in Ch3:        $Nframes3"
     ec "# - in Ch4:        $Nframes4"
-    
-    #   Given the filtering done by setup_tiles.py, some frames can be excluded; so the counting
-    # below may be off
-#    rm -f countFiles.dat
-#    cd $rdir
-#    for d in r???*; do 
-#        root=$(echo $d | cut -d\/ -f1 )
-#        n1=$(ls $root/ch1/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
-#        n2=$(ls $root/ch2/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
-#        n3=$(ls $root/ch3/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
-#        n4=$(ls $root/ch4/bcd/SPI*_bcd.fits 2> /dev/null | wc -l)
-#        echo "$root $n1 $n2 $n3 $n4)" | \
-#            awk '{printf "%-10s: %4i %4i %4i %4i  %5i\n", $1,$2,$3,$4,$5,$2+$3+$4+$5 }' \
-#            >> ../countFiles.dat
-#    done
-    cd $WRK
-    
-#    ec "# Details by AOR in countFiles.dat "
-#    naor=$(cat countFiles.dat | wc -l)
-#    nzer=$(grep -o \ 0\  countFiles.dat | wc -l)
-#    ec "# Number of AOR x valid channels:  $(($naor*4 -  $nzer))"
     
     end_step
 fi
@@ -753,7 +734,7 @@ fi
 
 
 #-----------------------------------------------------------------------------
-### - 15. find_outliers     (outliers)  - parallel / multi-node version
+### - 13. find_outliers     (outliers)  - parallel / multi-node version
 ### -     - mosaic.pl at native pix scale, to find outliers
 #-----------------------------------------------------------------------------
 
@@ -761,7 +742,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
 
     if [ "${@: -1}" == 'auto' ] ; then auto=T; fi
     ec "#-----------------------------------------------------------------------------"
-    ec "# >>>>  21. Build the tiles ... actually find_outliers    <<<<"
+    ec "# >>>>  13.  Find_outliers: build the tiles and then the rmask files    <<<<"
     ec "#-----------------------------------------------------------------------------"
     module=find_outliers          # for python modules
     shtmpl=find_outliers_job.sh   # template for sh scripts
@@ -824,24 +805,22 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
 
     # submit the jobs and begin the wait loop
     ec "# Submit $nsub outliers_nn files ... " 
-#    source run.outliers 2> tee submit_outliers.log
-#    grep -v master submit_outliers.log > submit.errs   # to look for errors in submission
     source run.outliers 2> submit_outliers.errs   # to look for errors in submission
     nerr=$(cat submit_outliers.errs | wc -l)
     if [ $nerr -ge 1 ]; then 
         ec "# WARNING: there are some submission errors - check submit_outliers.log ... continuing"
     else
         ec "# All $nmod jobs submitted ok ..."
-        rm submit.errs
+        rm submit_outliers.errs
     fi
     
     ec '# Begin wait loop -- wait for all outliers_* jobs to finish  --'
     n=0 # define loop counter to monitor progress
     while :; do 
-        ndone=$(ls outliers_*.out 2> /dev/null | wc -l)
+        ndone=$(ls $HOME/outliers_*.out 2> /dev/null | wc -l)
         [ $ndone -eq $nsub ] && break
         n=$((n+1))
-        if [ $n -eq 120 ]; then  # 20: check every 10 min; 60 to check every 30 min, etc.
+        if [ $n -eq 40 ]; then  # 20: check every 10 min; 60 to check every 30 min, etc.
             echo "$(date "+[%d.%h %H:%M"]): $ndone jobs done; $(($nsub-$ndone)) outstanding"
             n=0
         fi
@@ -849,6 +828,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     done
     ec "# Jobs outliers_nn finished - unix walltime: $(wt)"
     ec "# pbs logs in outliers_nn.out; mopex logs in outliers_nn.log"
+	mv $HOME/outliers_*.out .
     chmod 644 outliers_*.out
     
     ec "# Check results ..."
@@ -903,6 +883,10 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     mv outliers_*.?? outliers_*.???  outliers.info submit_outliers.log  outliers.files
     rm addkeyword.txt run.outliers
 
+	cd $odir
+	mkdir tiles
+	mv $PID.irac.tile.* tiles
+	cd - 
 	# need this file for automatic continuation
 	echo "# Keep me for automatic check of combine_rmasks" > $module.out 
     
@@ -997,10 +981,11 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     # wait loop
     ec "--  Wait for ${module}_ch? to finish  --"; sleep 20
     while :; do 
-        ndone=$(ls ${module}_ch?.out 2> /dev/null | wc -l)
+        ndone=$(ls $HOME/${module}_ch?.out 2> /dev/null | wc -l)
         [ $ndone -eq $nsub ] && break
         sleep 30
     done
+	mv $HOME/${module}_ch?.out .
     chmod 644 ${module}_ch?.out
     for f in ${module}_ch?.out; do
         ec "# Job $f finished - PBS $(grep RESOURCESUSED $f | cut -d\, -f4)"

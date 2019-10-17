@@ -23,18 +23,16 @@ Naor = len(AORlist)
 JobList=list()
 JobNo=0
 for aorIDX in range(0,Naor):
-#    IDMax = np.max(log['ExposureID'][(log['AOR']==AORlist[aorIDX]).nonzero()])
-#    for ID in range(0,IDMax+1):
      IDlist = list(set(log['ExposureID'][(log['AOR']==AORlist[aorIDX]).nonzero()]))
      for ID in IDlist:
-        ChMax = np.max(log['Channel'][((log['AOR']==AORlist[aorIDX])&(log['ExposureID']==ID)).nonzero()])
-        JobList.append([JobNo,AORlist[aorIDX],ID,ChMax])
-        JobNo+=1
+          ChMax = np.max(log['Channel'][((log['AOR']==AORlist[aorIDX])&(log['ExposureID']==ID)).nonzero()])
+          JobList.append([JobNo,AORlist[aorIDX],ID,ChMax])
+          JobNo+=1
 
 JobList = Table(rows=JobList,names=['JobNo','AOR','ExposureID','ChannelMax'])
 
 #Get the size of the array
-Nrows = len(JobList)
+Njobs = len(JobList)
 
 #Read the refined fluxes and postions
 StarData = ascii.read(StarTable,format="ipac") #read the data
@@ -47,14 +45,13 @@ StarData['pmdec_error'].fill_value=0.0
 StarData['parallax'].fill_value=1e-8
 
 
+print("Starting check_astrometry: {:} jobs with {:} threads".format(Njobs, Nthred))
 
-print("Starting astrometry check with " + str(Nproc) + " threads.")
-
-pool = mp.Pool(processes=Nhred)
-results = pool.map(partial(check_astrometry,log=log,Nrows=Nrows,JobList=JobList,AstrometryStars=StarData), range(0,Nrows))
+pool = mp.Pool(processes=Nthred)
+results = pool.map(partial(check_astrometry,log=log,Nrows=Njobs,JobList=JobList,AstrometryStars=StarData), range(0,Njobs))
 pool.close()
 
-#for i in range(0,Nrows):
+#for i in range(0,Njobs):
 #fix_astrometry(i)
 
 DCElist = log['DCE']
