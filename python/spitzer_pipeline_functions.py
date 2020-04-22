@@ -1283,10 +1283,6 @@ def find_outlier_tile(JobNo, JobList, debug):
     else:
         print("## ERROR: {:} not found".format(inf)); cperrs += 1
 
-#    if cperrs == 1:
-#        print(" ## ERROR in find_outliers job {:} ... see {:} for details".format(JobNo, logfile))
-#    else:
-#        print(">> Copied  {:}.mosaic*.fits to {:}".format(basename, OutputDIR))
 
     #-----------------------------------------------------------------------------
     # move the output rmasks to RMaskDir when they can be combined; 
@@ -1405,8 +1401,8 @@ def build_mosaic(Ch):
     
     # temporary files:
     # use local scratch area on process node, if large, to avoid heavy network usage
-    processTMPDIR =  scratch_dir_prefix(cluster) + 'tmpdir_' + PIDname + '_mosaic_Ch' + str(Ch) + '/'
-    
+    processTMPDIR =  scratch_dir_prefix(cluster) + 'BuildMosaicDir_' + PIDname + '_Ch' + str(Ch) + '/'
+    os.system(cmd)
     shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
     
@@ -1479,30 +1475,35 @@ def build_mosaic(Ch):
     else:
         print("## ERROR: {:} not found".format(inf)); cperrs = 1
 
+    # these are optional; don't declare error if not found
     inf = processTMPDIR + 'Combine-mosaic/median_mosaic.fits'
     out = basename + '.median_mosaic.fits'
     if os.path.isfile(inf):
         shutil.copy(inf, out)
     else:
-        print("## ERROR: {:} not found.".format(inf)); cperrs = 1
+        print("## WARNING: optional {:} not found.".format(inf))  #; cperrs = 1
 
     inf = processTMPDIR + 'Combine-mosaic/median_mosaic_unc.fits'
     out = basename + '.median_mosaic_unc.fits'
     if os.path.isfile(inf):
         shutil.copy(inf, out)
     else:
-        print("## ERROR: {:} not found.".format(inf)); cperrs = 1
+        print("## WARNING: optional {:} not found.".format(inf))  #; cperrs = 1
     
     #-----------------------------------------------------------------------------
     # Finish / clean up ... or not
+    # Do not telete temp dirs ... there are other things to do there
     #-----------------------------------------------------------------------------
-    if cperrs == 1:
-        print("## Quitting ... check products in {:}".format(processTMPDIR))
-        sys.exit(3)
-    else:
-        # clean up:  done in shell script if all products found
-        cleanupCMD = 'rm -rf ' + processTMPDIR
-        print(cleanupCMD)
-        os.system(cleanupCMD)
 
+    ## DEBUG: don't delete TMPDIR
+#   print("##### DEBUG ##### Found {:} errors".format(cperrs));   cperrs = 1
+    print("## DONE ... {:} - not deleted".format(processTMPDIR))
+#
+#   if cperrs == 1:
+#       print("## Quitting ... check products in {:} - not deleted".format(processTMPDIR))
+#       sys.exit(3)
+#   else:
+#       # clean up:  done in shell script if all products found
+#       cleanupCMD = 'rm -rf ' + processTMPDIR
+#       os.system(cleanupCMD)
 #---------------------------------------------------------------------------------------------------

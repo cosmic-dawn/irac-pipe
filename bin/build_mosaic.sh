@@ -24,6 +24,9 @@ wt() { echo "$(date "+%s.%N") $bdate" | \
 module () {  eval $(/usr/bin/modulecmd bash $*); }
 module purge ; module load intelpython/3-2019.4   mopex 
 
+bindir=/home/moneti/softs/irac-pipe/bin
+pydir=/home/moneti/softs/irac-pipe/python
+
 #-----------------------------------------------------------------------------
 
 bdate=$(date "+%s.%N")       # start time/date
@@ -52,9 +55,12 @@ Nthred=$(grep '^Nthred' supermopex.py | tr -s ' ' | cut -d\  -f3)
 
 # Build the command line
 comm="python make_mosaics_function.py @CHAN@"
+# internal tile size from config file
+mts=$(grep TILE_XSIZ cdf/irac_mosaic.nl | tr -d , | cut -d\  -f3 | tail -1)
 
 echo " - Work dir is:  $WRK"
 echo " - Starting on $(date) on $(hostname) with $Nthred threads"
+echo " - mopex mosaic tile size: $mts"
 echo " - command line is: "
 echo " % $comm"
 
@@ -80,6 +86,8 @@ else
 	echo ">> WARNING: abnormal termination of mopex.pl ... check $logfile"
 	errcode=3
 fi
+
+#-----------------------------------------------------------------------------
 
 echo ""
 echo "------------------------------------------------------------------"

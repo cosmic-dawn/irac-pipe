@@ -22,16 +22,10 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log,AORlog)
 Njobs = len(JobList)
 
-Nthred = int(Nthred/2)
+#Nthred = int(Nthred)
 print("Starting check_stars: {:} jobs with {:} threads.".format(Njobs, Nthred))
 
 pool = mp.Pool(processes=Nthred)
 results = pool.map(run_checkstars, range(0,Njobs))
 
 print("Done!")
-
-#Get the size of the array
-#Nrows = log['Filename'].size
-#for i in range(0,Nrows):
-#findstar(5,log=log,Nrows=Nrows,BrightStars=BrightStars,AstrometryStars=AstrometryStars)
-#        print str(i+1) + ' of ' + str(Nrows)

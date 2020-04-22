@@ -24,18 +24,13 @@ ascii.write(JobList, JobListName, format="ipac",overwrite=True)
 
 Njobs = len(JobList)
 #Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
-Nthr  = 24
+#Nthr  = 24
 
 print("Built job list {} with {} jobs".format(JobListName, Njobs))
 
-print("- Launch subtract_stars_function with {} threads".format(Nthr))
+print("- Launch subtract_stars_function with {} threads".format(Nthred))
 
-pool = mp.Pool(processes=Nthr)
+pool = mp.Pool(processes=Nthred)
 results = pool.map(run_subtractstars, range(0,Njobs))
 
 print("Done!")
-
-#Nrows = log['Filename'].size
-#for i in range(0,Nrows):
-#findstar(5,log=log,Nrows=Nrows,BrightStars=BrightStars,AstrometryStars=AstrometryStars)
-#        print str(i+1) + ' of ' + str(Nrows)

@@ -138,7 +138,7 @@ else:
     Njobs = len(JobList)
 
 
-# now lets run mosaic geometry to see if there are any files in each tile
+# now run mosaic geometry on each tile to see if there are any files in each tile
 # and restrict job list to "occupied" tiles
 nproc = int(2*Nproc/3)
 

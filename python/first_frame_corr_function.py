@@ -26,16 +26,6 @@ def first_frame_correct(JobNo):
     
     print('## Begin ffcorr job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
 
-# Thought it might be enough to do this once , but does not always work
-#    MJD = MJDs[0]
-#    #Check if we are in the Cryo mission
-#    if (MJD > WarmMJD):
-#        cryo = 0
-#        print(">> Warm mission: apply correction")
-#    else:
-#        cryo = 1
-#        print(">> Cryo mission: nothing to correct")
-    
     for fileNo in range(0,Nframes):
     
         MJD = MJDs[fileNo]
@@ -44,10 +34,10 @@ def first_frame_correct(JobNo):
         #Check if we are in the Cryo mission
         if (MJD > WarmMJD):
             cryo = 0
-            print("  Warm mission: apply correction")
+            #print("  Warm mission: apply correction")  #DEBUG
         else:
             cryo = 1
-            print("  Cryo mission: nothing to correct")
+            #print("  Cryo mission: nothing to correct")  #DEBUG
             
         #setup  some file names
         #Setup file suffixes re replace

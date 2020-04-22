@@ -67,7 +67,7 @@ fi
 # Now do the work
 echo ""
 echo ">> input lists are $PID.irac.?.sub.lst with these entries:"
-wc $odir/$PID.irac.?.sub.lst
+wc -l $odir/$PID.irac.?.sub.lst
 echo ""
 echo ">> ==========  Begin python output  ========== "
 

@@ -22,13 +22,13 @@ pid = os.getpid() #get the PID for temp files
 log = ascii.read(LogTable,format="ipac")
 Nrows = len(log)
 
-#find all the rmask files and collect DCEs
+# find all the rmask files and collect DCEs
 print('# Finding Rmask Files')
 fileList = TMPDIR + '/' + str(pid) + ".rmasks.lst"
 cmd = "find " + str(RMaskDir) + " -name '*_rmask.fits' > " + fileList
 os.system(cmd)
 
-#read the list of files
+# read the list of files
 RmaskFiles = ascii.read(fileList,format="no_header")
 RmaskFiles.rename_column('col1','Filename')
 Nfiles = len(RmaskFiles)
@@ -39,7 +39,7 @@ pool = mp.Pool(processes=Nthred)
 RmaskDCEresults = pool.map(partial(get_rmask_dce, RmaskFileList=RmaskFiles), range(0,Nfiles))
 pool.close()
 
-#make the RMASK table
+# make the RMASK table
 print("# Making list of Rmask files with DCEs")
 OutputRmaskList=list()
 for i in range(0,Nfiles):

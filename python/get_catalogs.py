@@ -44,10 +44,10 @@ dRA  = (RAmax-RAmin)   * u.deg
 dDEC = (DECmax-DECmin) * u.deg
 GAIAcoord = SkyCoord(ra=RA, dec=DEC, unit=(u.degree, u.degree), frame='icrs')
 
-#print("Ranges for GAIA recovery")  ##DEBUG
-#print("- RA = {:0.2f} +/- {:0.2f}; Dec = {:0.2f} +/- {:0.2f}".format(RA, dRA, DEC, dDEC))
-#print(GAIAcoord)    #; sys.exit()
-print(" ")
+print("Ranges for GAIA recovery")  ##DEBUG
+print("- RA = {:0.2f} +/- {:0.2f}; Dec = {:0.2f} +/- {:0.2f}".format(RA, dRA, DEC, dDEC))
+print(GAIAcoord)    #; sys.exit()
+print("")
 
 #Check if we already have the Gaia catalog
 if os.path.exists(GaiaTable):

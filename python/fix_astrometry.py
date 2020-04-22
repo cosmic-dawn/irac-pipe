@@ -43,11 +43,11 @@ StarData['pmdec_error'].fill_value=0.0
 StarData['parallax'].fill_value=1e-8
 
 #Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
-Nthr  = 24
+#Nthr  = 24
 
-print("Starting fix_astrometry on {} jobs with {} threads.".format(Nrows, Nthr))
+print("Starting fix_astrometry on {} jobs with {} threads.".format(Nrows, Nthred))
 
-pool = mp.Pool(processes=Nthr)
+pool = mp.Pool(processes=Nthred)
 results = pool.map(partial(fix_astrometry,log=log,Nrows=Nrows,JobList=JobList,AstrometryStars=StarData), range(0,Nrows))
 pool.close()
 
