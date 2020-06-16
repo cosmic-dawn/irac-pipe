@@ -47,12 +47,12 @@
 # v2.26: torque outs to $HOME then moved, and other minor fixes;   (17.oct.19)
 # v2.30: various minor adjustments - ppn, wtime, other details;    (10.apr.20)
 # v2.31: add required memory for outliers and mosaics;             (26.apr.20)
-# v2.32: torque outs back to $WRK (avoid interference) and more    ()
+# v2.32: torque outs back to $WRK (avoid interference) and more    (16.jun.20)
 #-----------------------------------------------------------------------------
 #set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.31 (26.apr.20)"
+vers="2.32 (16.jun.20)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"

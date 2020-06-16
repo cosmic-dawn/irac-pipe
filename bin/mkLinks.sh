@@ -19,7 +19,7 @@ fi
 cd $WRK; echo " --> $PWD"
 field=$(pwd | cut -d\/ -f3)   # nominally name of Spitzer field 
 
-# mar.2020: RAW data moved to $WRK/RAW
+# mar.2020: RAW data moved to RAW
 
 RAW="$WRK/RAW"
 naor=$(ls -d $RAW/r???* | wc -l)

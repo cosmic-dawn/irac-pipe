@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N preTiles_@PID@
-#PBS -o $WRK/setup_tiles.out
+#PBS -o setup_tiles.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #

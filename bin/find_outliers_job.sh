@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N ols_@PID@_@JOB@
-#PBS -o $WRK/outliers_@JOB@.out
+#PBS -o outliers_@JOB@.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@,mem=@MEM@gb
 #

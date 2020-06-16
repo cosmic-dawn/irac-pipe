@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N astrom_@PID@
-#PBS -o $WRK/fix_astrometry.out
+#PBS -o fix_astrometry.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #
