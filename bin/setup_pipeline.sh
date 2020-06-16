@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N setup_@PID@
-#PBS -o $HOME/setup_pipeline.out
+#PBS -o $WRK/setup_pipeline.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #

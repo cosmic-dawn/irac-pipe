@@ -1,9 +1,9 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N mos_ch@CHAN@_@PID@
-#PBS -o $HOME/build_mosaic_ch@CHAN@.out
+#PBS -o build_mosaic_ch@CHAN@.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
+#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@,mem=@MEM@
 #
 #-----------------------------------------------------------------------------
 # File:     build_mosaic.sh @INFO@

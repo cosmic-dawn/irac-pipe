@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N find_@PID@
-#PBS -o $HOME/find_stars.out
+#PBS -o $WRK/find_stars.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #

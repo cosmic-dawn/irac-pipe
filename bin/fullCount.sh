@@ -66,7 +66,7 @@ if [ $1 == "files" ]; then
 						'{printf "%-12s: %4i %4i %4i %4i %4i\n", $1,$2,$3,$4,$5,$6 }'
 				fi
 			done
-			cd $HOME
+			cd $WRK
 		done
 	done
 fi

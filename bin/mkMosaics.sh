@@ -28,19 +28,23 @@ fi
 PID=$(echo $WRK | cut -d\/ -f3)
 
 # get tmp dirs from build_mosaic log files
-nn=$(ls build_mosaic_ch?.log | wc -l)
-if [ $nn -ge 1 ]; then
-	tdirs=$(grep coadd_Tiles_List build_mosaic_ch?.log | grep mopex | cut -d \  -f4 | cut -d\/ -f1-3)
-else
-	echo " #### ERROR: build_mosaic logfiles not found"
-	if [ $PID != "COSMOS" ]; then exit 0; fi
-fi
-
-if [ $PID == "COSMOS" ]; then
+if [ -e BuildMosaic_tmpDirs.lst ]; then
+	echo ">> get BuildMosaic temp dirs from local list"
 	tdirs=$(cat BuildMosaic_tmpDirs.lst)
+else
+	echo ">> get BuildMosaic temp dirs from build_mosaic logfiles"
+	nn=$(ls build_mosaic_ch?.log | wc -l)
+	if [ $nn -ge 1 ]; then
+		tdirs=$(grep coadd_Tiles_List build_mosaic_ch?.log | grep mopex | cut -d \  -f4 | cut -d\/ -f1-3)
+	else
+		echo " #### ERROR: build_mosaic logfiles not found"
+		if [ $PID != "COSMOS" ]; then exit 0; fi
+	fi
 fi
 
 #echo $tdirs  ; exit ## DEBUG
+
+#-----------------------------------------------------------------------------
 
 for tdir in $tdirs; do 
 	cmdir=$tdir/Coadd-mosaic     # Coadd-mosaic dir
@@ -48,17 +52,18 @@ for tdir in $tdirs; do
 
 	# check what actually has been build for each tile
 	nn=$(echo $tdir | grep tmpdir_ | wc -l)  #;  echo $nn
-	if [ $nn -eq 0 ]; then 
-		root=$(head -1 $cmdir/coadd_Tiles_List | cut -d\_ -f1-5)          # ====> f1-6  for BuildMosaicDir style
-		tiles=$(ls -1 ${root}_*.fits | cut -d\_ -f6-9 | cut -d. -f1)      # ====> f7-9
-	else
-		root=$(head -1 $cmdir/coadd_Tiles_List | cut -d\_ -f1-6)          # ====> f1-6  for BuildMosaicDir style
-		tiles=$(ls -1 ${root}_*.fits | cut -d\_ -f7-9 | cut -d. -f1)      # ====> f7-9
+	if [ $nn -eq 0 ]; then                                          # for BuildMosaicDir style
+		root=$(head -1 $cmdir/coadd_Tiles_List | cut -d\_ -f1-5)
+		tiles=$(ls -1 ${root}_*.fits | cut -d\_ -f6-9 | cut -d. -f1)
+	else                                                            # for tmpdir (old) style
+		root=$(head -1 $cmdir/coadd_Tiles_List | cut -d\_ -f1-6)
+		tiles=$(ls -1 ${root}_*.fits | cut -d\_ -f7-9 | cut -d. -f1)
 	fi
+	#echo "DEBUG: \$root : $root"         #Debug  
 	echo -n "#### Ch $ch: $cmdir  ==> tiles: "; echo  $tiles # ; exit
 
 	for tile in $tiles; do
-		ls ${root}_$tile.fits > tlist   # written locally and deleted
+		ls ${cmdir}/coadd_Tile_*[0-9]_$tile.fits > tlist   # written locally and deleted
 		nn=$(cat tlist | wc -l)
 		if [ $tile == "Image"   ]; then code=image; fi
 		if [ $tile == "Cov"     ]; then code=cover; fi  # number of bdc files contributing to each pix
@@ -69,7 +74,10 @@ for tdir in $tdirs; do
 		echo ">> For $tile list with $nn entries, build $code stack"
 		cmd="mosaic_combine  -o ${PID}.irac.$ch.stack_$code.fits  -f $tdir/mosaic_fif.tbl  -g tlist"
 		echo ">> $cmd"
-		if [ $dry != "T" ]; then time $cmd; fi
+		if [ $dry != "T" ]; then 
+			$cmd
+			if [ $? -ne 0 ]; then echo "ERROR in mosaic_combine ... quitting"; exit 10; fi
+		fi
 	done
 done
 rm tlist

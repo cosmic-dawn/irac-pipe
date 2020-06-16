@@ -1402,7 +1402,6 @@ def build_mosaic(Ch):
     # temporary files:
     # use local scratch area on process node, if large, to avoid heavy network usage
     processTMPDIR =  scratch_dir_prefix(cluster) + 'BuildMosaicDir_' + PIDname + '_Ch' + str(Ch) + '/'
-    os.system(cmd)
     shutil.rmtree(processTMPDIR, ignore_errors=True)    # delete it already existing
     os.system('mkdir -p ' + processTMPDIR)              # and create a fresh one
     

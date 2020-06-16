@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N submeds_@PID@
-#PBS -o $HOME/subtract_medians.out
+#PBS -o $WRK/subtract_medians.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #

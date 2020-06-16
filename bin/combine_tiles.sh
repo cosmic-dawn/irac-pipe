@@ -1,7 +1,7 @@
 #!/bin/sh
 #PBS -S /bin/bash
 #PBS -N CombTiles_@PID@
-#PBS -o $HOME/combine_tiles.out
+#PBS -o $WRK/combine_tiles.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=18,walltime=12:00:00
 #

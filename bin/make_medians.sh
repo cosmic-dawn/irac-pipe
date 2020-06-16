@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N medians_@PID@
-#PBS -o $HOME/make_medians.out
+#PBS -o $WRK/make_medians.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #

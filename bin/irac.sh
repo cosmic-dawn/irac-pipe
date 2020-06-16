@@ -46,11 +46,13 @@
 # v2.25: improved counting in make_medians; param tuning;          (19.sep.19)
 # v2.26: torque outs to $HOME then moved, and other minor fixes;   (17.oct.19)
 # v2.30: various minor adjustments - ppn, wtime, other details;    (10.apr.20)
+# v2.31: add required memory for outliers and mosaics;             (26.apr.20)
+# v2.32: torque outs back to $WRK (avoid interference) and more    ()
 #-----------------------------------------------------------------------------
 #set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.30 (10.apr.20)"
+vers="2.31 (26.apr.20)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -94,6 +96,12 @@ if [[ -z "$WRK" ]]; then
     exit 20
 fi
 
+if [ $WRK != $PWD ]; then
+	echo " #### ERROR: \$WRK == $WRK != $PWD ... "
+	echo " #### NOT IN EXPECTED WORK DIRECTORY ... quitting"
+	exit 0
+fi
+
 if [ ! -e $WRK/supermopex.py ]; then 
     NODE=$(echo $WRK | sed 's|/automnt||' | cut -c2-4)   # use local node by default
 else 
@@ -127,7 +135,7 @@ fi
 wtime="18:00:00"   # default value
 Naor="2"           # a dummy vaue
 ppn=3              # define this
-ppnfew=22; ppnmany=31   # could put these in supermopex.py
+ppnfew=19; ppnmany=36   # could put these in supermopex.py
 #-----------------------------------------------------------------------------
 # Functions
 #-----------------------------------------------------------------------------
@@ -188,8 +196,7 @@ write_module() {  # write local verions of py and sh modules
     if [ -e $module.out ]; then rm $module.out; fi 
     ecn "# Submit $module file ... "; qsub $module.sh | tee -a $pipelog
     ec "# -- Wait for job to finish --"; sleep 20
-    while :; do [ -e $HOME/$module.out ] && break; sleep 20; done
-	mv $HOME/$module.out .
+    while :; do [ -e $WRK/$module.out ] && break; sleep 20; done
     chmod 644 $module.out
     ec "# Job $module finished - PBS $(grep RESOURCESUSED $module.out | cut -d\, -f4)"
 }
@@ -616,6 +623,9 @@ if [[ $1 =~ "fix_astr" ]] || [ $1 == "astrom" ]  || [ $auto == "T" ]; then
     write_module
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs; end_step
+
+	# fix logfile
+	for n in $(seq 0 9); do sed -i 's/'${n}'Pro/'${n}'\nPro/' $module.out; done
 fi
 
 #-----------------------------------------------------------------------------
@@ -751,11 +761,12 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
 	ec "# $ng of them contain data (are touched by 1 or more frames) "
 
     # check TileListFile:
-    tlf=${odir}/${PID}$(grep '^TileListFile ' $pars | cut -d\' -f2) 
-	tsize=$(grep TileSize $WRK/supermopex.py | tr -s \  | cut -d \  -f3)
+    tlf=${odir}/${PID}$(grep ^TileListFile $pars | cut -d\' -f2) 
+	tsize=$(grep ^MosaicTileSize $pars | tr -s \  | cut -d \  -f3)
+	tedge=$(grep ^MosaicEdge     $pars | tr -s \  | cut -d \  -f3)
     njobs=$(cat $tlf | grep $PID | wc -l)
     if [ -e $tlf ] && [ $njobs -gt 0 ]; then
-        ec "# ==>$(grep Split\ mosaic $module.out | cut -c2-99) of $tsize pix"
+        ec "# ==>$(grep Split\ mosaic $module.out | cut -c2-99) of $tsize pix with $tedge margin"
         ec "# ==>$(grep Wrote\ FIF    $module.out | cut -c2-99)"
         ec "# ==> Built mosaic tile list with $njobs entries (jobs)"
     else
@@ -809,26 +820,26 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
 		$comm
 	fi
     
-    for j in $(seq 0 $(($njobs-1))); do
-    #for j in $(seq 2); do    # for testing
+    for j in $(seq 0 $(($njobs-1)) ); do
+    #for j in $(seq 0 9); do    # for testing
         outmodule=outliers_$j.sh
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
         nline=$(echo $j | awk {'print $1+5'})
         Ntile=$(sed "${nline}q;d" $tlf | awk '{print $2}')
         NChan=$(sed "${nline}q;d" $tlf | awk '{print $3}')
         Nfram=$(sed "${nline}q;d" $tlf | awk '{print $4}')
-#       wtime=$((8+$Nfram/1500)):00:00
-#		wtime=$((8+$Nframes/1000)) ; if [ $wtime -gt 48 ]; then 
-#			ec "Requested wtime: $wtime hrs; reduce to 48";  wtime=48; fi
-#		wtime=${wtime}:00:00      #; echo $wtime
-		wtime=22:00:00  
+
 		ppn=$((8+$Nfram/5000))
+		mem="$((4 + $Nfram / 1000))"
+        wtm="$((3 + $Nfram / 1000)):00:00"
         sed -e "s|@WRK@|"$WRK"|g" -e "s|@INFO@|$info|g"  -e "s|@PID@|"$PID"|g"  \
-            -e "s|@JOB@|"$j"|g"   -e "s|@PPN@|$ppn|g"  -e "s|@WTIME@|$wtime|g"  \
-			$bindir/$shtmpl > $outmodule  
+            -e "s|@JOB@|"$j"|g"   -e "s|@PPN@|$ppn|g"    -e "s|@WTIME@|${wtm}|g"  \
+			-e "s|@NFRAMES@|$Nfram|"   -e "s|@MEM@|${mem}|"  $bindir/$shtmpl > $outmodule  
         chmod 755 $outmodule
-        echo " $j $Ntile $NChan $Nfram $outmodule $ppn $wtime " | \
-            awk '{printf "# job %3d for tile %3d ch %1d with %5d frames ==> %-15s with %2d ppn, wt %2d hr\n", $1,$2,$3,$4,$5,$6,$7}' | \
+#        echo " $j $Ntile $NChan $Nfram $outmodule $ppn $wtm $mem" 
+        echo " $j $Ntile $NChan $Nfram $outmodule $ppn $wtm $mem" | \
+            awk '{printf "# job %3d: tile %3d ch %1d with %5d frames ==> %-15s ppn: %2d, wt %2d hr, mem %2d GB\n", 
+                    $1,$2,$3,$4,$5,$6,$7,$8}' | \
             tee -a outliers.info
         echo "qsub $outmodule; sleep 2" >> run.outliers
     done
@@ -861,7 +872,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     ec '# Begin wait loop -- wait for all outliers_* jobs to finish  --'
     n=0 # define loop counter to monitor progress
     while :; do 
-        ndone=$(ls $HOME/outliers_*.out 2> /dev/null | wc -l)
+        ndone=$(ls $WRK/outliers_*.out 2> /dev/null | wc -l)
         [ $ndone -eq $nsub ] && break
         n=$((n+1))
         if [ $n -eq 40 ]; then  # 20: check every 10 min; 60 to check every 30 min, etc.
@@ -872,7 +883,6 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     done
     ec "# Jobs outliers_nn finished - unix walltime: $(wt)"
     ec "# pbs logs in outliers_nn.out; mopex logs in outliers_nn.log"
-	mv $HOME/outliers_*.out .
     chmod 644 outliers_*.out
     
     ec "# Check results ..."
@@ -1023,17 +1033,19 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
         info="for $WRK, built $(date +%d.%h.%y\ %T)"
         Nfram=$(grep I${chan}_ $odir/$ltab | wc -l)
 #       wtime=$((5+$Nfram/1300)):00:00
-		wtime=$((5+$Nfram/6000)) ; if [ $wtime -gt 48 ]; then 
-			ec "Requested wtime: $wtime hrs; reduce to 48";  wtime=48; fi
+		wtime=$((4+$Nfram/4000)) ; if [ $wtime -gt 88 ]; then 
+			ec "Requested wtime: $wtime hrs; reduce to 88";  wtime=88; fi
 		wtime=${wtime}:00:00      #; echo $wtime
+		mem="50gb"
 		if [ $Nfram -ge 25000 ]; then ppn=$ppnmany; else ppn=$ppnfew; fi
 
-        sed -e "s|@WRK@|$WRK|g" -e "s|@INFO@|$info|g" -e "s|@PID@|$PID|g"  -e "s|@CHAN@|$chan|g"  \
-            -e "s|@WTIME@|$wtime|g" -e "s|@PPN@|$ppn|g"  -e "s|@NTHRED@|$Nthred|g" \
+        sed -e "s|@WRK@|$WRK|g" -e "s|@INFO@|$info|g" -e "s|@PID@|$PID|g" \
+			-e "s|@CHAN@|$chan|g"  -e "s|@WTIME@|$wtime|g"  -e "s|@MEM@|${mem}|"  \
+			-e "s|@PPN@|$ppn|g"  -e "s|@NTHRED@|$Nthred|g" \
 			$bindir/${module}.sh > ./$outmodule
         chmod 755 $outmodule
-		echo " $chan  $Nfram $outmodule $ppn $wtime" | \
-			awk '{printf "# Ch%d with %6d frames ==> %s with %2d ppn, wt %2d hr\n", $1,$2,$3,$4,$5}' | \
+		echo " $chan  $Nfram $outmodule $ppn $wtime $mem" | \
+			awk '{printf "# Ch%d with %6d frames ==> %s with %2d ppn, wt %2d hr, mem %0d GB\n", $1,$2,$3,$4,$5,$6}' | \
             tee -a mosaics.info
         #ec " wrote $outmodule" 
         echo "qsub $outmodule; sleep 1" >> run.mosaics
@@ -1046,11 +1058,11 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
     # wait loop
     ec "--  Wait for ${module}_ch? to finish  --"; sleep 20
     while :; do 
-        ndone=$(ls $HOME/${module}_ch?.out 2> /dev/null | wc -l)
+        ndone=$(ls ${module}_ch?.out 2> /dev/null | wc -l)
         [ $ndone -eq $nsub ] && break
         sleep 30
     done
-	mv $HOME/${module}_ch?.out .
+	mv ${module}_ch?.out .
     chmod 644 ${module}_ch?.out
     for f in ${module}_ch?.out; do
         ec "# Job $f finished - PBS $(grep RESOURCESUSED $f | cut -d\, -f4)"

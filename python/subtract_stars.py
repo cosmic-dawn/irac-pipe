@@ -17,7 +17,7 @@ rawlog = ascii.read(LogTable,format="ipac")
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 #read in the AOR properties log, generate a joblist and write it to file
-JobListName = OutputDIR + 'jobs.sub_stars'
+JobListName = OutputDIR + 'jobs.sub_stars.tbl'
 AORlog = ascii.read(AORinfoTable,format="ipac")
 JobList = make_joblist(log, AORlog)
 ascii.write(JobList, JobListName, format="ipac",overwrite=True)    

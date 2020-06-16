@@ -3,6 +3,7 @@
 #-----------------------------------------------------------------------------
 # ratio of 2 images: compute im1/1m2 where im2 != 0 and is finite 
 # output will have same headers as first image.
+# AMo - apr.2020
 #-----------------------------------------------------------------------------
 
 import sys, os

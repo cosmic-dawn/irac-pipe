@@ -1,8 +1,9 @@
 #!/opt/intel/intelpython3-2019.4-088/intelpython3/bin/python
 #-----------------------------------------------------------------------------
-# syntzx:  clean_stacks.py chan
+# syntax:  clean_stacks.py chan
 # rm zeros from cover and exptm stacks, replacing them with nans;
 # zeros to remove are where image is nan
+# AMo - apr.2020
 #-----------------------------------------------------------------------------
 
 import sys, os

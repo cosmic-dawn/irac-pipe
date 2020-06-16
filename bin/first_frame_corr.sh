@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N ffcorr_@PID@
-#PBS -o $HOME/first_frame_corr.out
+#PBS -o $WRK/first_frame_corr.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
 #

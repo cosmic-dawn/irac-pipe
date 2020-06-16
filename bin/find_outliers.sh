@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N outliers_@PID@
-#PBS -o $HOME/find_outliers.out
+#PBS -o $WRK/find_outliers.out
 #PBS -j oe
 #PBS -l nodes=1:ppn=@NPPN@,walltime=@WTIME@
 #

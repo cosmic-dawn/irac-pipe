@@ -1,9 +1,9 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -N ols_@PID@_@JOB@
-#PBS -o $HOME/outliers_@JOB@.out
+#PBS -o $WRK/outliers_@JOB@.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
+#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@,mem=@MEM@gb
 #
 #-----------------------------------------------------------------------------
 # File:     find_outliers_job.sh @INFO@
@@ -63,7 +63,7 @@ mycd $WRK
 comm="python $module.py $jobNo"
 
 echo " - Work dir is:  $WRK"
-echo " - Starting on $(date) on $(hostname)"
+echo " - Starting on $(date) on $(hostname) for @NFRAMES@ frames"
 echo " - command line is: "
 echo " % $comm"
 
@@ -95,4 +95,4 @@ echo "------------------------------------------------------------------"
 echo " >>>>  outliers $jobNo finished on $(date) - walltime: $(wt)  <<<<"
 echo "------------------------------------------------------------------"
 echo ""
-exit 0
+exit $errcode
