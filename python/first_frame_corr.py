@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#----------------------------------------------------------------------------
+# module first_frame_correct.py (par)
+#----------------------------------------------------------------------------
 
 import numpy as np
 from astropy.io import ascii
@@ -23,10 +25,12 @@ AORlog = ascii.read(AORinfoTable,format="ipac")
 
 #genreate a joblist for parallelization
 JobList = make_joblist(log,AORlog)
-ascii.write(JobList, OutputDIR+'jobs.ffcorr.tbl', format="ipac", overwrite=True)
+JobListName = OutputDIR+'jobs.ffcorr.tbl'
+ascii.write(JobList, JobListName, format="ipac", overwrite=True)
 Njobs = len(JobList)
+#Nthred from supermopex.py
 
-print("Running first frame correction with " + str(Nthred) + " threads.")
+print(">> Starting first frame correction with " + str(Nthred) + " threads.")
 
 pool = mp.Pool(processes=Nthred)
 results = pool.map(run_firstframe, range(0,Njobs))

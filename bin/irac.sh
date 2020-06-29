@@ -48,11 +48,12 @@
 # v2.30: various minor adjustments - ppn, wtime, other details;    (10.apr.20)
 # v2.31: add required memory for outliers and mosaics;             (26.apr.20)
 # v2.32: torque outs back to $WRK (avoid interference) and more    (16.jun.20)
+# v2.33: with option to NOT subtract stars and more                (27.jun.20)
 #-----------------------------------------------------------------------------
 #set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.32 (16.jun.20)"
+vers="2.33 (27.jun.20)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -117,7 +118,7 @@ if [[ $(hostname) =~ "c" ]]; then
         Nproc=$(grep  '^Nproc'  supermopex.py | tr -s ' ' | cut -d\  -f3)
         Nthred=$(grep '^Nthred' supermopex.py | tr -s ' ' | cut -d\  -f3)
     else
-        Nproc=$(($(get_nproc) - 3))
+        Nproc=$(($(get_nproc) - 2))
         Nthred=$(($(get_nproc)/2))
     fi
 else
@@ -135,7 +136,8 @@ fi
 wtime="18:00:00"   # default value
 Naor="2"           # a dummy vaue
 ppn=3              # define this
-ppnfew=19; ppnmany=36   # could put these in supermopex.py
+ppnfew=19; ppnmany=46   # could put these in supermopex.py
+ppnfew=46
 #-----------------------------------------------------------------------------
 # Functions
 #-----------------------------------------------------------------------------
@@ -302,6 +304,7 @@ tdir=$(grep '^TMPDIR '     $pars | cut -d\' -f2 | tr -d \/)
 ltab=$(grep '^LogTable '   $pars | cut -d\' -f2)
 lfil=$(grep '^LogFile '    $pars | cut -d\' -f2)
 PID=$(grep  '^PIDname '    $pars | cut -d\' -f2)
+subBrightStars=$(grep '^SubtractBright' $pars | tr -s \  | cut -d\  -f3)
 
 if [ ! -d $odir ]; then mkdir $odir; fi
 if [ ! -d $tdir ]; then mkdir $tdir; fi
@@ -312,9 +315,10 @@ ec "| - RootDIR:           $wdir"
 #ec "| - OutputDIR:         \$RootDIR/$odir/"
 #ec "| - LogTable:          \$RootDIR/${odir}/$ltab"
 #ec "| - TempDir:           \$RootDIR/$tdir/"
-ec "| - Cluster is:        $(grep 'cluster ' $pars | cut -d\' -f2 )"
-ec "| - Nproc requested:   $(grep 'Nproc   ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
-ec "| - Nthread requested: $(grep 'Nthred  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
+ec "| - Cluster is:        $(grep '^cluster ' $pars | cut -d\' -f2 )"
+ec "| - Nproc requested:   $(grep '^Nproc   ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
+ec "| - Nthread requested: $(grep '^Nthred  ' $pars | cut -d\= -f2 | cut -d\  -f2 )"
+ec "| - Sub. bright stars: $subBrightStars"
 ec "|--------------------------------------------------------"
 ec "| Data info:"
 
@@ -368,7 +372,7 @@ ec "#---------------------------------------------------------------------------
 ec "##  Begin Spitzer data reduction pipeline $str  "
 
 #-----------------------------------------------------------------------------
-### -  1. setup pipeline
+### -  1. setup_pipeline    (setup)     - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
@@ -411,7 +415,7 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### -  2. get catalogs
+### -  2. get_catalogs      (catals)    - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "get_cat" ]]        || [ $1 == "catals" ] || [ $auto == "T" ]; then
@@ -453,7 +457,7 @@ if [[ $1 =~ "get_cat" ]]        || [ $1 == "catals" ] || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### -  3. first_frame_corr  (ffcorr)
+### -  3. first_frame_corr  (ffcorr - par)    - 
 #-----------------------------------------------------------------------------
 #Nframes=280000
 if [[ $1 =~ "first_frame" ]]    || [ $1 == "ffcorr" ] || [ $auto == "T" ]; then
@@ -477,7 +481,7 @@ fi
 
 
 #-----------------------------------------------------------------------------
-### -  4. find_stars
+### -  4. find_stars        (stars)      - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "find_st" ]]        || [ $1 == "stars" ]  || [ $auto == "T" ]; then
@@ -519,7 +523,7 @@ if [[ $1 =~ "find_st" ]]        || [ $1 == "stars" ]  || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### -  5. merge stars
+### -  5. merge_stars       (merge)     - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "merge_st" ]]       || [ $1 == "merge" ]  || [ $auto == "T" ]; then
@@ -543,7 +547,7 @@ if [[ $1 =~ "merge_st" ]]       || [ $1 == "merge" ]  || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### -  6. subtract stars
+### -  6. subtract_stars    (substars)  - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "subtract_st" ]]    || [ $1 == "substars" ] || [ $auto == "T" ]; then
@@ -552,6 +556,12 @@ if [[ $1 =~ "subtract_st" ]]    || [ $1 == "substars" ] || [ $auto == "T" ]; the
     ec "#-----------------------------------------------------------------------------"
     ec "# >>>>  6. Subtract stars            <<<<"
     ec "#-----------------------------------------------------------------------------"
+	BrightLim=$(grep  '^BrightStar ='  $pars | tr -s ' ' | cut -d\  -f3) 
+	if [[ $subBrightStars == "False" ]]; then 
+		ec "#### ATTN: Bright stars subtraction DISPABLED ####"
+	else
+		ec "# Subtracting stars brighter than $BrightLim magnitude"
+	fi
     module=subtract_stars
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev merge_stars
@@ -576,7 +586,7 @@ if [[ $1 =~ "subtract_st" ]]    || [ $1 == "substars" ] || [ $auto == "T" ]; the
 fi
 
 #-----------------------------------------------------------------------------
-### -  7. make_medians
+### -  7. make_medians      (medians)   - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "make_med" ]]       || [ $1 == "medians" ] || [ $auto == "T" ]; then
@@ -602,7 +612,7 @@ if [[ $1 =~ "make_med" ]]       || [ $1 == "medians" ] || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### -  8. fix astrometry
+### -  8. fix_astrometry    (astrom)    - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "fix_astr" ]] || [ $1 == "astrom" ]  || [ $auto == "T" ]; then
@@ -629,7 +639,7 @@ if [[ $1 =~ "fix_astr" ]] || [ $1 == "astrom" ]  || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### -  9. subtract medians  (submeds)  -
+### -  9. subtract medians  (submeds)   -
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "subtract_med" ]]   || [ $1 == "submeds" ] ||[ $auto == "T" ]; then
@@ -651,7 +661,7 @@ if [[ $1 =~ "subtract_med" ]]   || [ $1 == "submeds" ] ||[ $auto == "T" ]; then
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
     # check for presence of expected products of subtract_medians 
-    mdir=$(grep ^AORoutput supermopex.py | cut -d\' -f2 | tr -d \/)
+    mdir=$(grep ^AORoutput $pars | cut -d\' -f2 | tr -d \/)
     chkmeds > missing_submeds.list
     nmiss=$(cat missing_submeds.list | wc -l)
     if [ $nmiss -ne 0 ]; then
@@ -690,7 +700,7 @@ if [[ $1 =~ "check_st" ]]       || [[ $1 =~ "chkst" ]] || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### - 11. check astrometry  (chkast)    - optional
+### - 11. check_astrometry  (chkast)    - optional
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "check_astro" ]]    || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
@@ -719,7 +729,7 @@ if [[ $1 =~ "check_astro" ]]    || [[ $1 =~ "chka" ]] || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### - 12. setup tiles       (tiles)     - 
+### - 12. setup_tiles       (tiles)     - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
@@ -740,8 +750,8 @@ if [[ $1 =~ "setup_ti" ]]       || [ $1 == "tiles" ]  || [ $auto == "T" ]; then
 		ec "# ERROR: no sub.lst files found ... quitting"
 	fi
 
-	tsize=$(grep MosaicTileSize supermopex.py | tr -s \  | cut -d\  -f3,3)
-	tedge=$(grep MosaicEdge     supermopex.py | tr -s \  | cut -d\  -f3,3)
+	tsize=$(grep MosaicTileSize $pars | tr -s \  | cut -d\  -f3,3)
+	tedge=$(grep MosaicEdge     $pars | tr -s \  | cut -d\  -f3,3)
 	ec "# Using tiles of $tsize pixels with edge of $tedge pixels"
     
 #   wtime=$((5+$Nframes/6000)):00:00
@@ -863,7 +873,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     source run.outliers 2> submit_outliers.errs   # to look for errors in submission
     nerr=$(cat submit_outliers.errs | wc -l)
     if [ $nerr -ge 1 ]; then 
-        ec "# WARNING: there are some submission errors - check submit_outliers.log ... continuing"
+        ec "# WARNING: there are some submission errors - check submit_outliers.errs ... continuing"
     else
         ec "# All $nmod jobs submitted ok ..."
         rm submit_outliers.errs
@@ -951,7 +961,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
 	fi
     
     if [ ! -d outliers.files ]; then mkdir outliers.files; fi
-    mv outliers_*.?? outliers_*.???  outliers.info submit_outliers.log  outliers.files
+    mv outliers_*.?? outliers_*.???  outliers.info   outliers.files
     rm addkeyword.txt run.outliers
 
 	cd $odir
@@ -966,7 +976,7 @@ fi
 
 
 #-----------------------------------------------------------------------------
-### - 14. combine rmasks
+### - 14. combine_rmasks    (rmasks)    - 
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "combine_rm" ]]     || [ $1 == "rmasks" ] || [ $auto == "T" ]; then
@@ -975,7 +985,7 @@ if [[ $1 =~ "combine_rm" ]]     || [ $1 == "rmasks" ] || [ $auto == "T" ]; then
     ec "#-----------------------------------------------------------------------------"
     ec "# >>>> 14. Combine rmasks for mosaic <<<<"
     ec "#-----------------------------------------------------------------------------"
-                       module=combine_rmasks
+    module=combine_rmasks
     bdate=$(date "+%s.%N")       # start time/date
     chk_prev find_outliers
 
@@ -1005,7 +1015,7 @@ if [[ $1 =~ "combine_rm" ]]     || [ $1 == "rmasks" ] || [ $auto == "T" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-### - 15. build_mosaics ... single run, one node per channel
+### - 15. build_mosaics     (mosaics)    - single run, one node per channel
 #-----------------------------------------------------------------------------
 
 if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then

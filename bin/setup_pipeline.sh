@@ -3,11 +3,11 @@
 #PBS -N setup_@PID@
 #PBS -o setup_pipeline.out
 #PBS -j oe
-#PBS -l nodes=1:ppn=@PPN@,walltime=@WTIME@
+#PBS -l nodes=1:ppn=12,walltime=@WTIME@
 #
 #-----------------------------------------------------------------------------
 # File:     setup_pipeline.sh @INFO@
-# Purpose:  wrapper for setup_pipeline.py
+# Purpose:  wrapper for setup_pipeline.py (NOT parallelised)
 #-----------------------------------------------------------------------------
 set -u
 
@@ -52,10 +52,9 @@ mycd $WRK
 comm="python setup_pipeline.py"
 
 echo " - Work dir is:  $WRK"
-echo " - Command is: $comm"
 echo " - Starting on $(date) on $(hostname)"
 echo " - command line is: "
-echo " % $comm"
+echo "   % $comm"
 
 if [ $dry -eq 1 ]; then
 	echo " $module finished in dry mode"; exit 1

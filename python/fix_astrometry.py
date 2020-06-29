@@ -1,3 +1,6 @@
+#-----------------------------------------------------------------------------
+# module fix_asrometry.py (par)
+#-----------------------------------------------------------------------------
 #!/opt/local/bin/python
 
 from supermopex import *
@@ -29,6 +32,8 @@ for aorIDX in range(0,Naor):
           JobNo+=1
 
 JobList = Table(rows=JobList,names=['JobNo','AOR','ExposureID','ChannelMax'])
+JobListName = OutputDIR + 'jobs.fix_astrometry.tbl'
+ascii.write(JobList, JobListName, format="ipac",overwrite=True)  
 
 #Get the size of the array
 Nrows = len(JobList)

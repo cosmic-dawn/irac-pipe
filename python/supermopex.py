@@ -66,6 +66,7 @@ StarIDcol = 'wise_id'
 BrightStar = 16              # clip at brighter than this mag in wise 1,2,3
 BrightStarCat = OutputDIR + 'bright_stars.tbl'  # used for star subtraction
 StarTable = GaiaStarTable                         # use this for astrometry
+SubtractBrightStars = False        # if False, do NOT subtract bright stars
 
 # Mosaic configuration files - for building tiles
 IRACMosaicGeomConfig = 'mosaic_geom.nl'

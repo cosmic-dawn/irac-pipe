@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#----------------------------------------------------------------------------
+# module setup_pipeline.py (serial)
+#----------------------------------------------------------------------------
 
 import re, os,shutil
 import numpy as np
@@ -8,7 +10,7 @@ from astropy.table import Table, Column, MaskedColumn
 from astropy import wcs
 from astropy.io import fits
 import datetime
-import multiprocessing as mp
+#import multiprocessing as mp
 from supermopex import *
 
 #get the PID for temp files
@@ -24,7 +26,7 @@ if not(os.path.exists(AORoutput)):
 
 #find bcd files: find the fits files for parsing
 #use UNC files because they are only generated if the BCD pipleine didn't fail
-print('# Finding BCD Files')
+print('>> Finding BCD Files')
 fileList = TMPDIR + '/' + str(pid) + ".files.lst"
 cmd = "find " + str(RawDataDir) + " -name '*_bunc.fits' > " + fileList
 os.system(cmd)
@@ -33,8 +35,7 @@ os.system(cmd)
 files = ascii.read(fileList,format="no_header")
 Nfiles = len(files)
 
-print('Found {} file; read the headers and creating an inventory'.format(Nfiles))
-
+print('>> Found {:} files; read the headers and create an inventory'.format(Nfiles))
 os.system('rm -rf ' + fileList) #remove the temp file
 
 LogOutput = list()
@@ -79,18 +80,14 @@ for file in range(0,Nfiles):
     if good > 0:
         LogOutput.append(LogLine)  #Add line to log
     else:
-        print("Rejecting frame {:} because of bad header!".format(file))
+        print("## Rejecting frame {:} because of bad header!".format(file))
 
-print()#line return for progress
-print("Now processing inventory")
+print()  #line return for progress
+print(">> Now process the inventory")
 
 #write the log file
 log = Table(rows=LogOutput,names=LogItems)
 ascii.write(log, LogTable, format="ipac",overwrite=True)
-
-##write the imcat format for legacy compatability
-#cmd = 'ipac2lc ' + LogTable + ' > ' + LogFile
-#os.system(cmd)
 
 #do some checking of the data
 #Get lists of different file types
@@ -166,88 +163,44 @@ AORlog = Table(rows=AORinfo,names=('AOR','Object','Instrument','PID','ObsType','
 ascii.write(AORlog, AORinfoTable, format="ipac", overwrite=True)
 
 print("Your data consists of:")
-print("- {} AORs".format(Naor))
-print("- labled with {} object names".format(len(ObjectList)))
-print("- Observed with {} Program IDs".format(len(PIDList)))
+print("- {:} AORs".format(Naor))
+print("- labled with {:} object names".format(len(ObjectList)))
+print("- Observed with {:} Program IDs".format(len(PIDList)))
 print()
 #print(AORlog)
 
 #make the file lists
+for Ch in range(1,NIracBands+1):
+    #get the list of files for this instrument and band
+    files = log['Filename'][((log['Instrument']=='IRAC') & (log['Channel']==Ch)).nonzero()]
+    
+    #loop over the types of files we will want
+    for suffix in IRACsuffixList:
+       OutputFileList = list() #holder for output list
+       inputSuffix  = '_' + bcdSuffix + '.fits'  #bcd is the default ending
+       outputSuffix = '_' + suffix + '.fits'
 
-if doirac:
-    for Ch in range(1,NIracBands+1):
-        #get the list of files for this instrument and band
-        files = log['Filename'][((log['Instrument']=='IRAC') & (log['Channel']==Ch)).nonzero()]
-        
-        #loop over the types of files we will want
-        for suffix in IRACsuffixList:
-           OutputFileList = list() #holder for output list
-           inputSuffix  = '_' + bcdSuffix + '.fits'  #bcd is the default ending
-           outputSuffix = '_' + suffix + '.fits'
+       for i in range(0,len(files)):  #loop over files in list
+            #add file to list putting in apropriate suffix
+            OutputFileList.append(re.sub(inputSuffix,outputSuffix,files[i]))          
 
-           for i in range(0,len(files)):  #loop over files in list
-                #add file to list putting in apropriate suffix
-                OutputFileList.append(re.sub(inputSuffix,outputSuffix,files[i]))          
+       listname = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + suffix + '.lst' 
+       np.savetxt(listname,OutputFileList,fmt='%s')
 
-           listname = OutputDIR + PIDname + '.irac.' + str(Ch) + '.' + suffix + '.lst' 
-           np.savetxt(listname,OutputFileList,fmt='%s')
+#make the FIF file list for IRAC
+files = log['Filename'][(log['Instrument']=='IRAC').nonzero()]
+OutputFileList = list() #holder for output list
+inputSuffix  = '_' + bcdSuffix + '.fits'  #bcd is the default ending
+outputSuffix = '_' + corDataSuffix + '.fits'
 
-    #make the FIF file list for IRAC
-    files = log['Filename'][(log['Instrument']=='IRAC').nonzero()]
-    OutputFileList = list() #holder for output list
-    inputSuffix  = '_' + bcdSuffix + '.fits'  #bcd is the default ending
-    outputSuffix = '_' + corDataSuffix + '.fits'
+#save a list of all BCD data
+listname = OutputDIR + PIDname + '.irac.FIF.' + bcdSuffix + '.lst' 
+np.savetxt(listname,files,fmt='%s')
 
-    #save a list of all BCD data
-    listname = OutputDIR + PIDname + '.irac.FIF.' + bcdSuffix + '.lst' 
-    np.savetxt(listname,files,fmt='%s')
+#now do corrected BCDs
+OutputFileList = list() #holder for output list
+for i in range(0,len(files)):  #loop over files in list
+    OutputFileList.append(re.sub(inputSuffix,outputSuffix,files[i]))          
+listname = OutputDIR + PIDname + '.irac.FIF.' + corDataSuffix + '.lst' 
+np.savetxt(listname,OutputFileList,fmt='%s')
 
-    #now do corrected BCDs
-    OutputFileList = list() #holder for output list
-    for i in range(0,len(files)):  #loop over files in list
-        OutputFileList.append(re.sub(inputSuffix,outputSuffix,files[i]))          
-    listname = OutputDIR + PIDname + '.irac.FIF.' + corDataSuffix + '.lst' 
-    np.savetxt(listname,OutputFileList,fmt='%s')
-
-#now lets save mips data
-if domips:
-    for Ch in range(1,NMipsBands+1):
-        #get the list of files for this instrument and band
-        files = log['Filename'][((log['Instrument']=='MIPS') & (log['Channel']==Ch)).nonzero()]
-
-        #loop over the types of files we will want
-        for suffix in MIPSsuffixList:
-           OutputFileList = list() #holder for output list
-           inputSuffix  = '_' + bcdSuffix + '.fits'  #bcd is the default ending
-           outputSuffix = '_' + suffix + '.fits'
-
-           for i in range(0,len(files)):  #loop over files in list
-                #add file to list putting in apropriate suffix
-                OutputFileList.append(re.sub(inputSuffix,outputSuffix,files[i]))          
-
-           listname = OutputDIR + PIDname + '.mips.' + str(Ch) + '.' + suffix + '.lst' 
-           np.savetxt(listname,OutputFileList,fmt='%s')
-
-        #make one list per AOR
-        for AOR in AORList:
-            #get the list of files for this instrument and band
-            files = log['Filename'][((log['Instrument']=='MIPS') & (log['Channel']==Ch) & (log['AOR']==AOR)).nonzero()]
-            #loop over the types of files we will want
-            for suffix in MIPSsuffixList:
-               OutputFileList = list() #holder for output list
-               inputSuffix  = '_' + bcdSuffix + '.fits'  #bcd is the default ending
-               outputSuffix = '_' + suffix + '.fits'
-
-               for i in range(0,len(files)):  #loop over files in list
-                    #add file to list putting in apropriate suffix
-                    OutputFileList.append(re.sub(inputSuffix,outputSuffix,files[i]))          
-
-               listname = OutputDIR + PIDname + '.mips.' + str(AOR) + '.' + str(Ch) + '.' + suffix + '.lst' 
-               np.savetxt(listname,OutputFileList,fmt='%s')
-
-    #make the FIF file list for MIPS
-    files = log['Filename'][(log['Instrument']=='MIPS').nonzero()]
-    OutputFileList = list() #holder for output list
-    listname = OutputDIR + PIDname + '.mips.FIF.' + bcdSuffix + '.lst' 
-    np.savetxt(listname,files,fmt='%s')
- 

@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#----------------------------------------------------------------------------
+# module find_stars_function.py                                                       
+#----------------------------------------------------------------------------
 
 import sys
 import numpy as np
@@ -28,7 +30,7 @@ log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 # Joblist is generated in find_stars.py
 #print("-- Read job list written find_stars")  ##DEUG
-JobListName = OutputDIR + 'jobs.find_stars'
+JobListName = OutputDIR + 'jobs.find_stars.tbl'
 JobList = ascii.read(JobListName, format="ipac")
 Njobs = len(JobList)
 

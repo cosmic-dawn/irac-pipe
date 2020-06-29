@@ -1,8 +1,11 @@
-#!/opt/local/bin/python
+#-----------------------------------------------------------------------------
+# module check_astrometry.py (par)
+#-----------------------------------------------------------------------------
 
 from supermopex import *
 from spitzer_pipeline_functions import *
 
+import sys
 import numpy as np
 from astropy.io import ascii
 from astropy.table import Table, Column, MaskedColumn, hstack
@@ -30,6 +33,7 @@ for aorIDX in range(0,Naor):
           JobNo+=1
 
 JobList = Table(rows=JobList,names=['JobNo','AOR','ExposureID','ChannelMax'])
+ascii.write(JobList, OutputDIR + 'jobs.check_astrometry.tbl', format="ipac",overwrite=True)  
 
 #Get the size of the array
 Njobs = len(JobList)

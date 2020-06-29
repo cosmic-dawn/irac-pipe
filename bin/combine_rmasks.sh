@@ -56,7 +56,7 @@ echo " - Work dir is:  $WRK"
 echo " - Job running on $node with $Nthred threads"
 echo " - Starting on $(date) on $(hostname)"
 echo " - command line is: "
-echo " % $comm"
+echo "   % $comm"
 
 if [ $dry -eq 1 ]; then
 	echo " $module finished in dry mode"; exit 1

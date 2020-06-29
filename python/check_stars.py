@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#-----------------------------------------------------------------------------
+# module check_stars.py (par)
+#-----------------------------------------------------------------------------
 
 import numpy as np
 from astropy.io import ascii
@@ -19,10 +21,13 @@ log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 AORlog = ascii.read(AORinfoTable,format="ipac")
 
 #genreate a joblist for parallelization
-JobList = make_joblist(log,AORlog)
-Njobs = len(JobList)
+JobList     = make_joblist(log,AORlog)
+JobListName = OutputDIR + 'jobs.check_stars.tbl'
+ascii.write(JobList, JobListName, format="ipac",overwrite=True)    
 
-#Nthred = int(Nthred)
+Njobs  = len(JobList)
+Nthred = int(Nthred / 2)
+
 print("Starting check_stars: {:} jobs with {:} threads.".format(Njobs, Nthred))
 
 pool = mp.Pool(processes=Nthred)

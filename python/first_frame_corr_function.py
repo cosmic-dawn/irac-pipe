@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#----------------------------------------------------------------------------
+# module first_frame_corr_function.py
+#----------------------------------------------------------------------------
 
 from supermopex import *
 from spitzer_pipeline_functions import *

@@ -26,15 +26,11 @@ JobNo=int(args[0])
 rawlog = ascii.read(LogTable,format="ipac")
 log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
-#Get the size of the array
-Nrows = log['Filename'].size
+# Read joblist for parallelization
 
-#read in the AOR properties log
-AORlog = ascii.read(AORinfoTable,format="ipac")
-
-#genreate a joblist for parallelization
-JobList = make_joblist(log,AORlog)
-Njobs = len(JobList)
+JobListName = OutputDIR + 'jobs.check_stars.tbl'
+JobList = ascii.read(JobListName, format="ipac")
+Njobs   = len(JobList)
 
 if (JobNo > Njobs):
     die("Requested job number greater than number of jobs available " + str(Njobs) + "!");

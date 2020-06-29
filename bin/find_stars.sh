@@ -49,13 +49,12 @@ fi
 mycd $WRK
 
 # Build the command line
-comm="python ${module}.py" # @ID@" 
+comm="python ${module}.py" 
 
 echo " - Work dir is:  $WRK"
-echo " - Command is: $comm"
 echo " - Starting on $(date) on $(hostname)"
 echo " - command line is: "
-echo " % $comm"
+echo "   % $comm"
 
 if [ $dry -eq 1 ]; then
 	echo " $module finished in dry mode"; exit 1

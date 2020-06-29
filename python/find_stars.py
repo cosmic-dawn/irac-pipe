@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#-----------------------------------------------------------------------------
+# module find_stars.py (par)
+#-----------------------------------------------------------------------------
 
 import sys,os
 import numpy as np
@@ -19,28 +21,29 @@ log = rawlog[:][(rawlog['Instrument']=='IRAC').nonzero()]
 
 # Read in the AOR properties log, generate a joblist and write it to file
 # if JobList not present, then build new one, else read it ... in order to use alternate list; 
-JobListName = OutputDIR + 'jobs.find_stars'
+JobListName = OutputDIR + 'jobs.find_stars.tbl'
 if not os.path.exists(JobListName):
     AORlog = ascii.read(AORinfoTable,format="ipac")
     JobList = make_joblist(log, AORlog)
     ascii.write(JobList, JobListName, format="ipac",overwrite=True)    
-    print(">> Built job list {} with {} jobs".format(JobListName.split('/')[-1], len(JobList)))
+    print(">> Built job list {:} with {:} jobs".format(JobListName.split('/')[-1], len(JobList)))
 else:
     JobList = ascii.read(JobListName, format="ipac")
-    print(">> Using available job list {} with {} jobs".format(JobListName.split('/')[-1], len(JobList)))
+    print(">> Using available job list {:} with {:} jobs".format(JobListName.split('/')[-1], len(JobList)))
 
 Njobs = len(JobList)
-#Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
-#Nthr  = 24
 
 # Read in Stars from WISE and cut on bright stars, then write out a table to use for fitting.
-stars = ascii.read(StarTable,format="ipac")   # gaia
-BrightFlux = 10**((BrightStar-23.9)/-2.5)  #convert from mag to uJy
-BrightStars = stars[:][((stars['w1'] > BrightFlux) + (stars['w2'] > BrightFlux)).nonzero()] #get only bright stars
-ascii.write(BrightStars, BrightStarCat, format="ipac", overwrite=True)
-print(">> Built list {} of bright stars from WISE catal.".format(BrightStarCat.split('/')[-1]))
+stars = ascii.read(StarTable,format="ipac")           # here gaia-wise tbl
+BrightFlux = 10**((BrightStar-23.9)/-2.5)             # convert from mag to uJy 
+BrightStars = stars[:][((stars['w1'] > BrightFlux) + (stars['w2'] > BrightFlux)).nonzero()] # select bright stars (w1 _or_ w2 > BrightFlux)
+ascii.write(BrightStars, BrightStarCat, format="ipac", overwrite=True)   # write to bright_stars.tbl; same format as gaia-wise.tbl
+lenbs = len(BrightStars)
+print(">> Built {:} of stars brighter than {:} mag from WISE catal, with {:} objects.".format(BrightStarCat.split('/')[-1], BrightStar, lenbs))
 
-print(">> Now launch find_stars_function JobNo for each job, with {} threads".format(Nthred))
+# Prepare to lauch
+Nthred  = 32  
+print(">> Now launch find_stars_function JobNo for each job, with {:} threads".format(Nproc))
 
 # run using run_findstars(JobNo) function defined above
 pool = mp.Pool(processes=Nthred)

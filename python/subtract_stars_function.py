@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#-----------------------------------------------------------------------------
+# module subtract_stars_function.py
+#-----------------------------------------------------------------------------
 
 import sys
 import numpy as np
@@ -41,5 +43,6 @@ if (JobNo > Njobs):
 StarData = ascii.read(RefinedStarCat, format="ipac") #read the data
 StarMatch = SkyCoord(StarData['ra']*u.deg, StarData['dec']*u.deg)
 
+#print(">> length stars.refined.tbl", len(StarMatch), len(StarData)) ; sys.exit()   # DEBUG
 
 subtract_stars(JobNo, JobList=JobList, log=log, StarData=StarData, StarMatch=StarMatch)

@@ -62,7 +62,7 @@ echo " - Work dir is:  $WRK"
 echo " - Starting on $(date) on $(hostname) with $Nthred threads"
 echo " - mopex mosaic tile size: $mts"
 echo " - command line is: "
-echo " % $comm"
+echo "   % $comm"
 
 if [ $dry -eq 1 ]; then
     echo ">> build_mosaic ch@CHAN@ finished in dry mode";    echo ""; exit 1

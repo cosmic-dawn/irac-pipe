@@ -1,4 +1,10 @@
-#!/bin/sh
+#!/bin/bash
+#PBS -S /bin/bash
+#PBS -N mkMosaics
+#PBS -o mkMosaics.out
+#PBS -j oe
+#PBS -l nodes=1:ppn=19,walltime=7:00:00
+#
 #-----------------------------------------------------------------------------
 # script: mkMosaics.sh
 #-----------------------------------------------------------------------------
@@ -33,11 +39,11 @@ if [ -e BuildMosaic_tmpDirs.lst ]; then
 	tdirs=$(cat BuildMosaic_tmpDirs.lst)
 else
 	echo ">> get BuildMosaic temp dirs from build_mosaic logfiles"
-	nn=$(ls build_mosaic_ch?.log | wc -l)
+	nn=$(ls mosaics.files/build_mosaic_ch?.log | wc -l)
 	if [ $nn -ge 1 ]; then
-		tdirs=$(grep coadd_Tiles_List build_mosaic_ch?.log | grep mopex | cut -d \  -f4 | cut -d\/ -f1-3)
+		tdirs=$(grep coadd_Tiles_List mosaics.files/build_mosaic_ch?.log | grep mopex | cut -d \  -f4 | cut -d\/ -f1-3)
 	else
-		echo " #### ERROR: build_mosaic logfiles not found"
+		echo " #### ERROR: build_mosaic logfiles not found" ; exit 0
 		if [ $PID != "COSMOS" ]; then exit 0; fi
 	fi
 fi
@@ -91,8 +97,8 @@ pydir=/home/moneti/softs/irac-pipe/python
 for d in $tdirs; do
 	ch=${d: -1}  #;	echo $ch
 	cmd="$pydir/clean_stacks.py $ch "
-	if [ $dry == "T" ]; then echo $cmd; else $cmd;	fi
+	if [ $dry == "T" ]; then echo ">> $cmd"; else $cmd;	fi
 	cmd="$pydir/imratio.py  $PID.irac.$ch.stack_covtm.fits  $PID.irac.$ch.stack_cover.fits  $PID.irac.$ch.stack_exptm.fits "
-	if [ $dry == "T" ]; then echo $cmd; else $cmd;	fi
+	if [ $dry == "T" ]; then echo ">> $cmd"; else $cmd;	fi
 done
 #-----------------------------------------------------------------------------

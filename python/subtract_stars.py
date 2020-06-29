@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#----------------------------------------------------------------------------
+# module subtract_stars.py                                                       
+#----------------------------------------------------------------------------
 
 import sys,os
 import numpy as np
@@ -10,6 +12,15 @@ import multiprocessing as mp
 def run_subtractstars(JobNo):
     cmd = "cd " + RootDIR + "; " + pythonCMD + " subtract_stars_function.py " + str(JobNo)
     os.system(cmd)
+
+#------------------------------------------------------------------
+
+if (SubtractBrightStars == False):
+    print("#### ---------------------------------------- ####")
+    print("#### ATTN: Bright stars subtraction DISPABLED ####")
+    print("#### ---------------------------------------- ####")
+else:
+    print("Bright star limit is mag", BrightStar)
 
 #-----------------------------------------------------------------------------
 #Read the log file and extract the IRAC info
@@ -23,12 +34,10 @@ JobList = make_joblist(log, AORlog)
 ascii.write(JobList, JobListName, format="ipac",overwrite=True)    
 
 Njobs = len(JobList)
-#Nthr  = int(Nproc*2/3)  # does not work for NEP on 48core nodes
-#Nthr  = 24
+Nthred  = Nproc  #fails for COSMOS on ppn=48 machines - TBC; use Nproc/2 or so
 
-print("Built job list {} with {} jobs".format(JobListName, Njobs))
-
-print("- Launch subtract_stars_function with {} threads".format(Nthred))
+print("Built job list {:} with {:} jobs".format(JobListName, Njobs))
+print("- Launch subtract_stars_function with {:} threads".format(Nthred))
 
 pool = mp.Pool(processes=Nthred)
 results = pool.map(run_subtractstars, range(0,Njobs))

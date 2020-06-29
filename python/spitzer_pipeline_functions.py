@@ -30,6 +30,10 @@ from supermopex import *
 def scratch_dir_prefix(cluster):
 
     if cluster == 'candide':
+        locnode = os.uname().nodename
+        if (locnode[0] == 'c'):
+            print(" On login node ... quitting") ; sys.exit()
+
         locnode = os.uname().nodename.split('.')[0]  # name of process node
 
         if (locnode == 'n03') or (locnode == 'n04') or (locnode == 'n05') or (locnode == 'n06') or (locnode == 'n07') or (locnode == 'n08') or (locnode == 'n09'):
@@ -181,7 +185,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
     AstrometryCoords=SkyCoord(AstrometryStars['ra'], AstrometryStars['dec'],pm_ra_cosdec=AstrometryStars['pmra'].filled(),pm_dec=AstrometryStars['pmdec'].filled(),distance=AstrometryStars['parallax'].filled(),obstime=GaiaEpoch,frame='icrs', unit="deg")
 
     Nframes = len(files)    
-    print('## Begin find_stars job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
+    print('## Begin find_stars job {:4d} on {:} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, os.uname().nodename, AOR, Ch, Nframes))
     
     for fileNo in range(0,Nframes):
         MJD      = MJDs[fileNo]
@@ -227,6 +231,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         pid = os.getpid() #get the PID for temp files
         processTMPDIR = scratch_dir_prefix(cluster) + 'tmpfiles' + str(pid) + '-' + str(fileNo) + '/'
         os.system('mkdir -p ' + processTMPDIR)
+#        print("   Process temp dir is", processTMPDIR)      # DEBUG
 
         #Cut Bright Star catalog to this frame
         #Transform GAIA catalog to current epoch
@@ -241,8 +246,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         BrightStarTable = inputCat
         ascii.write(Table([BrightInFrame.ra.deg,BrightInFrame.dec.deg],names=['ra','dec']),BrightStarTable,format="ipac",overwrite=True)
         
-        # uncomment print statements to DEBUG
-        #print(' - Frame {:3d}; {:}: find bright stars ...'.format(fileNo +1, inputData.split('/')[-1]), end=' ')
+#        print(' - Frame {:3d}; {:}: find bright stars ...'.format(fileNo +1, inputData.split('/')[-1]), end=' ') # DEBUG
         
         #do the bright stars for star subtraciton
         command = "apex_user_list_1frame.pl -n find_brightstars.nl  -p " + PRF[cryo][Ch-1] + " -u " + BrightStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
@@ -250,6 +254,7 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         
         #move the output to the final location
         FitTable = processTMPDIR + basename + "_ffcbcd_extract_raw.tbl"
+#        print("### shutil mv ",FitTable,outputCat)      # DEBUG
         shutil.move(FitTable,outputCat)
 
         #Transform GAIA catalog to current epoch
@@ -646,7 +651,6 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
 
         #Get the image center for figuring out which objects to consider
         ImCenter = SkyCoord(frameRA,frameDEC, frame="fk5", unit="deg")
-
         
         #Check if we are in the Cryo mission
         if (MJD > WarmMJD):
@@ -655,28 +659,27 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
             cryo = 1
 
         #setup  some file names
-        
         #Setup file suffixes re replace
         inputSuffix  = '_' + bcdSuffix + '.fits'  #used in search
         basename = re.sub(inputSuffix,'',re.split('/',BCDfilename)[-1]) #get the base of the filename
 
         outputSuffix = '_' + BrightStarTableSuffix
-        FrameCatFile = re.sub(inputSuffix,outputSuffix,BCDfilename) #Make the filename for the star catalogs
+        FrameCatFile = re.sub(inputSuffix,outputSuffix,BCDfilename)   # Make the filename for the star catalogs (bright.tbl)
         
         outputSuffix = '_' + ffSuffix + '.fits'
-        ImageFile    = re.sub(inputSuffix,outputSuffix,BCDfilename) #Image File
+        ImageFile    = re.sub(inputSuffix,outputSuffix,BCDfilename)   # image file
         
         outputSuffix = '_' + corUncSuffix + '.fits'
-        SigmaFile    = re.sub(inputSuffix,outputSuffix,BCDfilename) #Image File
+        SigmaFile    = re.sub(inputSuffix,outputSuffix,BCDfilename)   # unc file
         
         outputSuffix = '_' + maskSuffix + '.fits'
-        MaskFile     = re.sub(inputSuffix,outputSuffix,BCDfilename) #Image File
+        MaskFile     = re.sub(inputSuffix,outputSuffix,BCDfilename)   # mask file
         
         outputSuffix = '_' + starsubSuffix + '.fits'
-        SubtractedFile = re.sub(inputSuffix,outputSuffix,BCDfilename) #Star subtracted file File
+        SubtractedFile = re.sub(inputSuffix,outputSuffix,BCDfilename) # star subtracted image file (stbcd.fits)
         
         outputSuffix = '_' + starMaskSuffix + '.fits'
-        SubtractedMask = re.sub(inputSuffix,outputSuffix,BCDfilename) #Star subtracted file File
+        SubtractedMask = re.sub(inputSuffix,outputSuffix,BCDfilename) # star subtracted mask file (stmsk.fits)
         
         #remove output files
         rmCMD = 'rm -rf ' + SubtractedFile + ' ' + SubtractedMask
@@ -705,16 +708,17 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         #match the frame to the refined
         FrameMatch = SkyCoord(FrameStars['RA']*u.deg,FrameStars['Dec']*u.deg) #put the catalog into the matching format
 
-        BrightSep = StarMatch.separation(ImCenter)  #Find stars near the frame
-        BrightInFrameMatch = StarMatch[np.where(BrightSep.deg < 0.123)] #Keep only stars near the frame
-        BrightInFrameData = StarData[np.where(BrightSep.deg < 0.123)]#Keep data from only stars near the frame
-        idx,d2d,d3d=FrameMatch.match_to_catalog_sky(BrightInFrameMatch) #do the match
+        BrightSep = StarMatch.separation(ImCenter)                      # Find stars near the frame
+        BrightInFrameMatch = StarMatch[np.where(BrightSep.deg < 0.123)] # Keep only stars near the frame ??? why this??? how could you have anything outside the frame???
+        BrightInFrameData = StarData[np.where(BrightSep.deg < 0.123)]   # Keep data from only stars near the frame from refined.tbl
+        idx,d2d,d3d=FrameMatch.match_to_catalog_sky(BrightInFrameMatch) # do the match
 
         #make a copy of the data
         chlabel = 'ch' + str(Ch)
-        #SubtractData = Table([StarData['ID'],StarData['ra'],StarData['dec'],StarData[chlabel]],names=('ID','RA','Dec','flux'))
+        if (SubtractBrightStars == False):  # set flux to near 0 in order to subtract a non-star
+            BrightInFrameData[chlabel] = 1.e-4
         SubtractData = Table([BrightInFrameData['ID'],BrightInFrameData['ra'],BrightInFrameData['dec'],BrightInFrameData[chlabel]],names=('ID','RA','Dec','flux'))
-        
+
         #put in the positions from this frame
         if (len(idx)>0):
             SubtractData['RA'][idx]=FrameStars['RA']
@@ -860,7 +864,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
             repIDX=int(repIDX)
         
         #Read image in, subtract median
-        #print("DEBUG: open image file {:} ".format(ImageFile))
+#        print("DEBUG: open image file {:} ".format(ImageFile))   #DEBUG
         imageHDU = fits.open(ImageFile) #Read image
         imageData = ma.masked_invalid(imageHDU[0].data)
         imageData= imageData - medianData[repIDX] #Subtract median image
@@ -902,7 +906,7 @@ def subtract_median(JobNo,JobList,log,AstroFix):
         goodRA = imageHDU[0].header['CRVAL1']
         goodDE = imageHDU[0].header['CRVAL2']
         imageHDU.writeto(SubtractedFile,overwrite='True') #write output image
-        #print("DEBUG: wrote sub file  {:} ".format(SubtractedFile))
+#        print("DEBUG: wrote sub file  {:} ".format(SubtractedFile))   # DEBUG
         
         #scale the RMS to the correct value due to the incorrect bias pedistle
         #we want the variance of the background and the noise image to match in an additive fassion
