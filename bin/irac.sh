@@ -48,12 +48,12 @@
 # v2.30: various minor adjustments - ppn, wtime, other details;    (10.apr.20)
 # v2.31: add required memory for outliers and mosaics;             (26.apr.20)
 # v2.32: torque outs back to $WRK (avoid interference) and more    (16.jun.20)
-# v2.33: with option to NOT subtract stars and more                (27.jun.20)
+# v2.33: with option to NOT subtract stars and more                (29.jun.20)
 #-----------------------------------------------------------------------------
 #set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.33 (27.jun.20)"
+vers="2.33 (29.jun.20)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
