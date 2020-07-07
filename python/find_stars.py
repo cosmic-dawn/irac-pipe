@@ -42,8 +42,8 @@ lenbs = len(BrightStars)
 print(">> Built {:} of stars brighter than {:} mag from WISE catal, with {:} objects.".format(BrightStarCat.split('/')[-1], BrightStar, lenbs))
 
 # Prepare to lauch
-Nthred  = 32  
-print(">> Now launch find_stars_function JobNo for each job, with {:} threads".format(Nproc))
+Nthred  = 24
+print(">> Now launch find_stars_function JobNo for each job, with {:} threads".format(Nthred))
 
 # run using run_findstars(JobNo) function defined above
 pool = mp.Pool(processes=Nthred)

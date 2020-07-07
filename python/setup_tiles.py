@@ -1,3 +1,6 @@
+#-----------------------------------------------------------------------------
+# module setup_tiles.py (par)
+#-----------------------------------------------------------------------------
 
 from supermopex import *
 from spitzer_pipeline_functions import *
@@ -68,7 +71,7 @@ if not os.path.isfile(AllTiles):
     Nx = int(np.floor(np.double(NAXIS1)/MosaicTileSize)+1)
     Ny = int(np.floor(np.double(NAXIS2)/MosaicTileSize)+1)
     Ntot = Nx*Ny
-    print("# Split mosaic into Nx={} x Ny={} tiles".format(Nx,Ny))
+    print("# Split mosaic into Nx={:} x Ny={:} tiles".format(Nx,Ny))
 
     # make new FIFs for each tile
     tileID=0
@@ -140,10 +143,10 @@ else:
 
 # now run mosaic geometry on each tile to see if there are any files in each tile
 # and restrict job list to "occupied" tiles
-nproc = int(2*Nproc/3)
+Nthred = Nproc
 
-print("# Find exposures for each tile with {} threads".format(nproc))
-pool = mp.Pool(processes=nproc)
+print("# Find exposures for each tile with {:} threads".format(Nthred))
+pool = mp.Pool(processes=Nthred)
 results = pool.map(partial(run_mosaic_geometry,JobList=JobList), range(0,Njobs))
 pool.close()
 

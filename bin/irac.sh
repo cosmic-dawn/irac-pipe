@@ -48,7 +48,7 @@
 # v2.30: various minor adjustments - ppn, wtime, other details;    (10.apr.20)
 # v2.31: add required memory for outliers and mosaics;             (26.apr.20)
 # v2.32: torque outs back to $WRK (avoid interference) and more    (16.jun.20)
-# v2.33: with option to NOT subtract stars and more                (29.jun.20)
+# v2.33: with option to NOT subtract stars, and more               (29.jun.20)
 #-----------------------------------------------------------------------------
 #set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
@@ -395,7 +395,7 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
     ec "# Job $module finished - unix walltime=$(wt)"
     chk_outputs
     
-    nfra=$(grep Found $module.out | cut -d\  -f2)
+    nfra=$(grep Found $module.out | cut -d\  -f3)
     nrej=$(grep Rejecting $module.out | wc -l)
     ec "# Found $nfra frames; rejected $nrej because of bad header"
     
@@ -410,7 +410,8 @@ if [[ $1 =~ "setup_pipe" ]]     || [ $1 == "setup" ]; then
     ec "# - in Ch2:        $Nframes2"
     ec "# - in Ch3:        $Nframes3"
     ec "# - in Ch4:        $Nframes4"
-    
+    grep \ range: $module.out | awk '{print "[INFO]  "$0}' | tee -a $pipelog
+
     end_step
 fi
 
@@ -880,13 +881,15 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
     fi
     
     ec '# Begin wait loop -- wait for all outliers_* jobs to finish  --'
-    n=0 # define loop counter to monitor progress
+    n=40 # define loop counter to monitor progress
     while :; do 
         ndone=$(ls $WRK/outliers_*.out 2> /dev/null | wc -l)
         [ $ndone -eq $nsub ] && break
         n=$((n+1))
         if [ $n -eq 40 ]; then  # 20: check every 10 min; 60 to check every 30 min, etc.
-            echo "$(date "+[%d.%h %H:%M"]): $ndone jobs done; $(($nsub-$ndone)) outstanding"
+			nrun=$(qstat -u moneti -r | grep ols_$PID | wc -l)
+			nque=$(qstat -u moneti    | grep ols_$PID | grep \ Q\  | wc -l)
+            echo "$(date "+[%d.%h %H:%M"]): $ndone jobs done; $nrun running; $nque queued"
             n=0
         fi
         sleep 30

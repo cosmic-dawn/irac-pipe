@@ -22,12 +22,21 @@ field=$(pwd | cut -d\/ -f3)   # nominally name of Spitzer field
 # mar.2020: RAW data moved to RAW
 
 RAW="$WRK/RAW"
-naor=$(ls -d $RAW/r???* | wc -l)
-echo ">> Field is $field; raw data linked from $RAW ... "
-echo ">> Found $naor AORs in $RAW ... OK?"  #; exit
-echo ">> ...  ^C to quit if not correct"  
-sleep 10 #; exit
+echo ">> Field is $field; raw data in $RAW ... "
 
+if [ ! -e shortlist ]; then  # get all the data
+	naor=$(ls -d $RAW/r???* | wc -l)
+	echo ">> Found $naor AORs in $RAW ... OK?"  #; exit
+else 
+	naor=$(cat shortlist | wc -l)
+	echo ">> Found $naor AORs in shorlist ... OK?"  #; exit
+fi
+	
+echo ">> ...  ^C to quit if not correct"  
+
+if [ $dry != "T" ]; then
+	sleep 10 #; exit
+fi
 
 if [ ! -d Data ]; then echo " -- create Data dir "; mkdir Data; fi
 if [ ! -d cal ];  then echo " -- create cal dir  "; mkdir cal;  fi
@@ -70,7 +79,7 @@ if [ $dry != "T" ]; then
 	echo " >> Built links for $(ls -d r????* | wc -l) AORs with $(ls -d r????*/ch? | wc -l) chan dirs"
 fi
 
-#exit 0
+exit 0
 cd ..; echo " --> $PWD"
 
 echo "# 2) link calib and other auxiliary files into cal and cdf"

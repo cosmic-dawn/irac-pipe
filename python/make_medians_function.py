@@ -1,4 +1,6 @@
-#!/opt/local/bin/python
+#-----------------------------------------------------------------------------
+# module make_medians_function.py (par)
+#-----------------------------------------------------------------------------
 
 from supermopex import *
 from spitzer_pipeline_functions import *

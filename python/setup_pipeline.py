@@ -101,7 +101,6 @@ PIDList = list(set(log['PID']))#get a list of Observation Types
 Naor = len(AORList) #number of AORs
 Nhdr = len(log['HDR'][(log['HDR']==1).nonzero()])  # get the number of HDR frames
 
-
 #Determine what we should do for the mosaics
 
 #This is where we will figure out the number of mosaics later
@@ -166,7 +165,11 @@ print("Your data consists of:")
 print("- {:} AORs".format(Naor))
 print("- labled with {:} object names".format(len(ObjectList)))
 print("- Observed with {:} Program IDs".format(len(PIDList)))
-print()
+# get range of RA and Dec
+print("- RA  range: {:0.5f} to {:0.5f}".format(np.min(log['RA']), np.max(log['RA'])))
+print("- Dec range: {:0.5f} to {:0.5f}".format(np.min(log['DEC']), np.max(log['DEC'])))
+
+print()  # black line
 #print(AORlog)
 
 #make the file lists
