@@ -209,17 +209,17 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         outputSuffix = '_' + maskSuffix + '.fits'
         inputMask =  re.sub(inputSuffix,outputSuffix,filename)  #masked pixel input
         
-        outputSuffix = '_' + BrightStarTableSuffix
-        outputCat = re.sub(inputSuffix,outputSuffix,filename)  #table of bright stars as output
-
         outputSuffix = '_' + BrightStarInputTableSuffix
-        inputCat = re.sub(inputSuffix,outputSuffix,filename)  #table of bright stars as output
+        inputCatBright = re.sub(inputSuffix,outputSuffix,filename)   #table of bright stars as input
+
+        outputSuffix = '_' + BrightStarTableSuffix
+        outputCatBright = re.sub(inputSuffix,outputSuffix,filename)  #table of bright stars in frame as output
 
         outputSuffix = '_' + StarInputTableSuffix
-        inputCatAstro = re.sub(inputSuffix,outputSuffix,filename)  #table of astrometry stars as output
+        inputCatAstro = re.sub(inputSuffix,outputSuffix,filename)   #table of astrometry stars as input
 
         outputSuffix = '_' + StarTableSuffix
-        outputCatAstro = re.sub(inputSuffix,outputSuffix,filename)  #table of astrometry stars as output
+        outputCatAstro = re.sub(inputSuffix,outputSuffix,filename)  #table of astrometry stars in frame as output
         
         #Check if we are in the Cryo mission
         if (MJD > WarmMJD):
@@ -243,19 +243,19 @@ def findstar(JobNo,JobList,log,BrightStars,AstrometryStars):
         BrightInFrame = BrightPositions[np.where(BrightSep.deg < 0.123)]
 
         #write out catalog for bright stars
-        BrightStarTable = inputCat
+        BrightStarTable = inputCatBright
         ascii.write(Table([BrightInFrame.ra.deg,BrightInFrame.dec.deg],names=['ra','dec']),BrightStarTable,format="ipac",overwrite=True)
         
 #        print(' - Frame {:3d}; {:}: find bright stars ...'.format(fileNo +1, inputData.split('/')[-1]), end=' ') # DEBUG
         
-        #do the bright stars for star subtraciton
+        # do the bright stars for star subtraction
         command = "apex_user_list_1frame.pl -n find_brightstars.nl  -p " + PRF[cryo][Ch-1] + " -u " + BrightStarTable + " -i " + inputData + " -s " + inputSigma + " -d " + inputMask + " -M " + IRACPixelMasks[Ch-1] + " -O " + processTMPDIR + ' > /dev/null 2>&1'
         os.system(command)
         
         #move the output to the final location
         FitTable = processTMPDIR + basename + "_ffcbcd_extract_raw.tbl"
-#        print("### shutil mv ",FitTable,outputCat)      # DEBUG
-        shutil.move(FitTable,outputCat)
+#        print("### shutil mv ",FitTable,outputCatBright)      # DEBUG
+        shutil.move(FitTable,outputCatBright)
 
         #Transform GAIA catalog to current epoch
         #AstrometryPositions = applyGAIApm(MJD,AstrometryStars)
@@ -641,9 +641,10 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
     
     Nframes = len(files)
     
-    print('## Begin subtr_stars job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
+    print('## Begin sub_stars job {:4d} - AOR {:8d} Ch {:}, {:3d} frames'.format(JobNo, AOR, Ch, Nframes))
 
     for fileNo in range(0,Nframes):
+#    for fileNo in range(5,6):
         MJD = MJDs[fileNo]
         frameRA = RAs[fileNo]
         frameDEC= DECs[fileNo]
@@ -651,8 +652,7 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
 
         #Get the image center for figuring out which objects to consider
         ImCenter = SkyCoord(frameRA,frameDEC, frame="fk5", unit="deg")
-        
-        #Check if we are in the Cryo mission
+
         if (MJD > WarmMJD):
             cryo = 0
         else:
@@ -695,28 +695,34 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         pid = os.getpid() #get the PID for temp files
         processTMPDIR = scratch_dir_prefix(cluster) + 'tmpfiles' + str(pid) + '-' + str(fileNo) + '/'
         os.system('mkdir -p ' + processTMPDIR)
+#        print(" DEBUG: processTMPDIR is ",processTMPDIR)
+
+        # build some filenames
         tmpStars = processTMPDIR + str(pid) + ".stars.tbl"
-        residualImage = processTMPDIR + "Mosaic/residual_" + basename + '_' + ffSuffix + '.fits'
+        residualImage = processTMPDIR + "Mosaic/residual_" + basename + '_' + ffSuffix + '.fits'  # actually the star-subtracted image
         bandcorrImage = processTMPDIR + "Mosaic/bandcorr_" + basename + '_' + ffSuffix + '.fits'
+
         #split the bandcorrImage into directory and file so the corrector doesn't truncate the file name if the name is too long
         bandcorrDIR = processTMPDIR + "Mosaic/"
         bandcorrFILE = "bandcorr_" + basename + '_' + ffSuffix + '.fits'
         
-        #read in the star data for this frame
+        #read in the star data for this frame (frame_bright.tbl)
         FrameStars = ascii.read(FrameCatFile,format="ipac") #read the data for the single frame catalog
+#        print(" DEBUG:  length frame_bright.tbl: ",len(FrameStars))
+#        print(" DEBUG:  length stars.refined.tbl: ",len(StarMatch))
         
         #match the frame to the refined
         FrameMatch = SkyCoord(FrameStars['RA']*u.deg,FrameStars['Dec']*u.deg) #put the catalog into the matching format
 
         BrightSep = StarMatch.separation(ImCenter)                      # Find stars near the frame
-        BrightInFrameMatch = StarMatch[np.where(BrightSep.deg < 0.123)] # Keep only stars near the frame ??? why this??? how could you have anything outside the frame???
+        BrightInFrameMatch = StarMatch[np.where(BrightSep.deg < 0.123)] # Keep only stars near the frame ??? how could you have anything outside the frame???
         BrightInFrameData = StarData[np.where(BrightSep.deg < 0.123)]   # Keep data from only stars near the frame from refined.tbl
         idx,d2d,d3d=FrameMatch.match_to_catalog_sky(BrightInFrameMatch) # do the match
 
         #make a copy of the data
         chlabel = 'ch' + str(Ch)
         if (SubtractBrightStars == False):  # set flux to near 0 in order to subtract a non-star
-            BrightInFrameData[chlabel] = 1.e-4
+            BrightInFrameData[chlabel] = 0.0
         SubtractData = Table([BrightInFrameData['ID'],BrightInFrameData['ra'],BrightInFrameData['dec'],BrightInFrameData[chlabel]],names=('ID','RA','Dec','flux'))
 
         #put in the positions from this frame
@@ -724,28 +730,55 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
             SubtractData['RA'][idx]=FrameStars['RA']
             SubtractData['Dec'][idx]=FrameStars['Dec']
 
-        #Save the table
-        ascii.write(SubtractData,tmpStars,format="ipac",overwrite=True)
+##        # remove stars outside the frame (surely there is a better way)
+##        outs = []
+##        for nn in range(len(SubtractData)):
+##            xxx = np.where((idx == nn))[0]
+##            if (len(xxx) == 0):
+##                outs.append(nn)
+##        SubtractData.remove_rows(outs)
+
+        # Save the table - with the included bright stars only 
+        ascii.write(SubtractData[idx],tmpStars,format="ipac",overwrite=True)
         fixunits =  "sed -i -e 's/double/ float/g' " + tmpStars
         os.system(fixunits)
 
         #Subtract the stars
-        subtractCMD='apex_qa.pl -n subtract_stars.nl  -T ' + ImageFile + ' -E ' + tmpStars + ' -P ' + PRF[cryo][Ch-1] + ' -O ' + processTMPDIR + ' > /dev/null 2>&1'
-        #print(subtractCMD)
-        os.system(subtractCMD)
+        if (len(idx) > 0):
+            print(">> File {:}: subtract {:} bright stars".format(fileNo, len(idx)))
+#            subtractCMD='apex_qa.pl -n subtract_stars.nl  -T ' + ImageFile + ' -E ' + tmpStars + ' -P ' + PRF[cryo][Ch-1] + ' -O ' + processTMPDIR + ' > /dev/null 2>&1'
+            # or, with logfile:
+#            logfile = "{:}substar_{:}-{:}.log".format(TMPDIR, JobNo, fileNo)          # in local temp dir
+            logfile = "{:}substar_{:}-{:}.log".format(processTMPDIR, JobNo, fileNo)    # in tmpfile dir
+            subtractCMD='apex_qa.pl -n subtract_stars.nl  -T ' +ImageFile+ ' -E ' +tmpStars+ ' -P ' +PRF[cryo][Ch-1]+ ' -O ' +processTMPDIR+ ' > '+logfile+' 2>&1'
+            os.system(subtractCMD)
+            # for DEBUG purposes: link original file to tempfiles dir
+            os.system("ln -s "+ ImageFile +" "+ bandcorrDIR)
+        else: 
+            # Nothing to subtract; copy input image to residual image for later work
+            print("#### File {:}: No stars to subtract - copy input image".format(fileNo))
+            os.system("mkdir " + bandcorrDIR)
+            os.system("cp "+ ImageFile +" "+ residualImage)
+
+        if (not os.path.isfile(residualImage)):
+            print("#### ERROR ### {:} not found".format(residualImage))
+            sys.exit()
         
         if(Ch <= 2):
-            #read in the star subtracted image
+            #read in the star subtracted image, if built, or the original
             subtractedHDU = fits.open(residualImage)
             subtractedWCS = wcs.WCS(subtractedHDU[0].header)  #read the WCS
+            # read corrected bright star data
+            SubtractData = ascii.read(tmpStars, format="ipac")  #; print(SubtractData)
             
             #put flux values into image at subtracted star posiitons so bandcorr will work
             Xpos,Ypos = subtractedWCS.wcs_world2pix(SubtractData['RA'],SubtractData['Dec'],1) #get x,y from wcs
+#            print("Xpos", Xpos), print("Ypos",Ypos)
             for starIDX in range(0,len(Xpos)):
                 for dx in range(-1,2):
                     for dy in range(-3,4):
-                        xpix = int(round(Xpos[starIDX]+dx))
-                        ypix = int(round(Ypos[starIDX]+dy))
+                        ypix = int(round(Xpos[starIDX]+dx))
+                        xpix = int(round(Ypos[starIDX]+dy))
                         if((xpix>=0) and (xpix<=255) and (ypix>=0) and (ypix<=255)):
                             subtractedHDU[0].data[xpix,ypix]+=SubtractData['flux'][starIDX]
         
@@ -754,18 +787,22 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
             subtractedHDU.close()
             bandCorrCMD='cd ' + bandcorrDIR + '; bandcor_warm -f -t 20.0 -b 1 256 1 256 ' + bandcorrFILE + ' > /dev/null 2>&1'
             os.system(bandCorrCMD)
-
+        
             #read back in the bandcorrected image, remove the inserted flux
             bandcorrHDU = fits.open(bandcorrImage)
             
             for starIDX in range(0,len(Xpos)):
                 for dx in range(-1,2):
                     for dy in range(-3,4):
-                        xpix = int(round(Xpos[starIDX]+dx))
-                        ypix = int(round(Ypos[starIDX]+dy))
+                        ypix = int(round(Xpos[starIDX]+dx))
+                        xpix = int(round(Ypos[starIDX]+dy))
                         if((xpix>=0) and (xpix<=255) and (ypix>=0) and (ypix<=255)):
                             bandcorrHDU[0].data[xpix,ypix]-=SubtractData['flux'][starIDX]
             
+            if (not os.path.isfile(bandcorrImage)):
+                print("#### ERROR ### {:} not found".format(bandcorrImage))
+                sys.exit()
+
             #Mask the ghost from the bright star
             starMaskHDU = fits.open(MaskFile)
             StarIndex=np.indices([255,255]) #make an index vector for mask
@@ -775,16 +812,21 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
                     gy = Ypos[starIDX] + PRFghostDy[cryo][Ch-1]
                     GhostMask =np.sqrt(((StarIndex[1]-gx)**2) + ((StarIndex[0]-gy)**2))
                     starMaskHDU[0].data[(GhostMask<=PRFghostR[cryo][Ch-1]).nonzero()]=32767
-
+        
             bandcorrHDU.writeto(SubtractedFile,overwrite='True')  #write out the final star subtracted image
             bandcorrHDU.close()
             starMaskHDU.writeto(SubtractedMask,overwrite='True')  #write out the modified star mask
             starMaskHDU.close()
+            # and build bandcorr.fits (difference image with correction only)
+#            comm=("/home/moneti/softs/python/imsub.py {:} {:} {:}bandcorr.fits".format(bandcorrImage, residualImage, bandcorrDIR)); print(comm)
+#            os.system(comm)
         else:
             shutil.move(residualImage,SubtractedFile)
             shutil.copy(MaskFile,SubtractedMask)
 
-      ##  print(' - Wrote star_subtracted frame {:3d}: {:}'.format(fileNo +1, SubtractedFile.split('/')[-1]))
+#        print(' DEBUG: Wrote star_subtracted frame {:3d}: {:}'.format(fileNo, SubtractedFile.split('/')[-1]))
+#        os.system("rm " + logfile )
+        error = False
 
         # clean up
         #wait for file to be in place
@@ -793,8 +835,9 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
         while os.path.exists(SubtractedFile) == 'False':
             wait = 1
 
-        cleanupCMD = 'rm -rf ' + processTMPDIR
-        os.system(cleanupCMD)
+        if (error == False):
+            cleanupCMD = 'rm -rf ' + processTMPDIR
+            os.system(cleanupCMD)
 
     print('## Finished job {:4d}: AOR {:8d} Ch {:}'.format(JobNo, AOR, Ch))
 
