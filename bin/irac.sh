@@ -49,11 +49,12 @@
 # v2.31: add required memory for outliers and mosaics;             (26.apr.20)
 # v2.32: torque outs back to $WRK (avoid interference) and more    (16.jun.20)
 # v2.33: with option to NOT subtract stars, and more               (29.jun.20)
+# v2.40: correct band-correction if not subtracting stars          (08.aug.20)
 #-----------------------------------------------------------------------------
 #set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="2.33 (29.jun.20)"
+vers="irac.sh v2.40 (08.aug.20)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -559,7 +560,7 @@ if [[ $1 =~ "subtract_st" ]]    || [ $1 == "substars" ] || [ $auto == "T" ]; the
     ec "#-----------------------------------------------------------------------------"
 	BrightLim=$(grep  '^BrightStar ='  $pars | tr -s ' ' | cut -d\  -f3) 
 	if [[ $subBrightStars == "False" ]]; then 
-		ec "#### ATTN: Bright stars subtraction DISPABLED ####"
+		ec "#### ATTN: Bright stars subtraction DISABLED ####"
 	else
 		ec "# Subtracting stars brighter than $BrightLim magnitude"
 	fi

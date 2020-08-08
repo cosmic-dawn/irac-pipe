@@ -730,20 +730,12 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
             SubtractData['RA'][idx]=FrameStars['RA']
             SubtractData['Dec'][idx]=FrameStars['Dec']
 
-##        # remove stars outside the frame (surely there is a better way)
-##        outs = []
-##        for nn in range(len(SubtractData)):
-##            xxx = np.where((idx == nn))[0]
-##            if (len(xxx) == 0):
-##                outs.append(nn)
-##        SubtractData.remove_rows(outs)
-
-        # Save the table - with the included bright stars only 
+        # Save the table - with only the bright stars included
         ascii.write(SubtractData[idx],tmpStars,format="ipac",overwrite=True)
         fixunits =  "sed -i -e 's/double/ float/g' " + tmpStars
         os.system(fixunits)
 
-        #Subtract the stars
+        ### And now for the actual star subtraction: call the star-subtracted image the "residual" image
         if (len(idx) > 0):
             print(">> File {:}: subtract {:} bright stars".format(fileNo, len(idx)))
 #            subtractCMD='apex_qa.pl -n subtract_stars.nl  -T ' + ImageFile + ' -E ' + tmpStars + ' -P ' + PRF[cryo][Ch-1] + ' -O ' + processTMPDIR + ' > /dev/null 2>&1'
@@ -752,8 +744,8 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
             logfile = "{:}substar_{:}-{:}.log".format(processTMPDIR, JobNo, fileNo)    # in tmpfile dir
             subtractCMD='apex_qa.pl -n subtract_stars.nl  -T ' +ImageFile+ ' -E ' +tmpStars+ ' -P ' +PRF[cryo][Ch-1]+ ' -O ' +processTMPDIR+ ' > '+logfile+' 2>&1'
             os.system(subtractCMD)
-            # for DEBUG purposes: link original file to tempfiles dir
-            os.system("ln -s "+ ImageFile +" "+ bandcorrDIR)
+#            # for DEBUG purposes: link original file to tempfiles dir
+#            os.system("ln -s "+ ImageFile +" "+ bandcorrDIR)
         else: 
             # Nothing to subtract; copy input image to residual image for later work
             print("#### File {:}: No stars to subtract - copy input image".format(fileNo))
@@ -762,42 +754,43 @@ def subtract_stars(JobNo,JobList,log,StarData,StarMatch):
 
         if (not os.path.isfile(residualImage)):
             print("#### ERROR ### {:} not found".format(residualImage))
-            sys.exit()
+            sys.exit()    # Maybe a bit brutal ....
         
         if(Ch <= 2):
-            #read in the star subtracted image, if built, or the original
+            #read in the star star-subtracted (residual) image, if built, or the original
             subtractedHDU = fits.open(residualImage)
             subtractedWCS = wcs.WCS(subtractedHDU[0].header)  #read the WCS
             # read corrected bright star data
             SubtractData = ascii.read(tmpStars, format="ipac")  #; print(SubtractData)
             
-            #put flux values into image at subtracted star posiitons so bandcorr will work
+            # If subtracting bright stars, then put flux values into image at subtracted star positions so bandcorr will work;
+            # otherwise let the band corrector work on the flux of the stars
             Xpos,Ypos = subtractedWCS.wcs_world2pix(SubtractData['RA'],SubtractData['Dec'],1) #get x,y from wcs
-#            print("Xpos", Xpos), print("Ypos",Ypos)
-            for starIDX in range(0,len(Xpos)):
-                for dx in range(-1,2):
-                    for dy in range(-3,4):
-                        ypix = int(round(Xpos[starIDX]+dx))
-                        xpix = int(round(Ypos[starIDX]+dy))
-                        if((xpix>=0) and (xpix<=255) and (ypix>=0) and (ypix<=255)):
-                            subtractedHDU[0].data[xpix,ypix]+=SubtractData['flux'][starIDX]
-        
+            if (SubtractBrightStars == True):
+                for starIDX in range(0,len(Xpos)):
+                    for dx in range(-1,2):
+                        for dy in range(-3,4):
+                            ypix = int(round(Xpos[starIDX]+dx))
+                            xpix = int(round(Ypos[starIDX]+dy))
+                            if((xpix>=0) and (xpix<=255) and (ypix>=0) and (ypix<=255)):
+                                subtractedHDU[0].data[xpix,ypix]+=SubtractData['flux'][starIDX]
+                            
             #write out the image for the warm band corrector and do the banding correction
             subtractedHDU.writeto(bandcorrImage,overwrite='True')
             subtractedHDU.close()
             bandCorrCMD='cd ' + bandcorrDIR + '; bandcor_warm -f -t 20.0 -b 1 256 1 256 ' + bandcorrFILE + ' > /dev/null 2>&1'
             os.system(bandCorrCMD)
         
-            #read back in the bandcorrected image, remove the inserted flux
             bandcorrHDU = fits.open(bandcorrImage)
-            
-            for starIDX in range(0,len(Xpos)):
-                for dx in range(-1,2):
-                    for dy in range(-3,4):
-                        ypix = int(round(Xpos[starIDX]+dx))
-                        xpix = int(round(Ypos[starIDX]+dy))
-                        if((xpix>=0) and (xpix<=255) and (ypix>=0) and (ypix<=255)):
-                            bandcorrHDU[0].data[xpix,ypix]-=SubtractData['flux'][starIDX]
+            # If subtracting bright stars, read back in the bandcorrected image, remove the inserted flux
+            if (SubtractBrightStars == True):
+                for starIDX in range(0,len(Xpos)):
+                    for dx in range(-1,2):
+                        for dy in range(-3,4):
+                            ypix = int(round(Xpos[starIDX]+dx))
+                            xpix = int(round(Ypos[starIDX]+dy))
+                            if((xpix>=0) and (xpix<=255) and (ypix>=0) and (ypix<=255)):
+                                bandcorrHDU[0].data[xpix,ypix]-=SubtractData['flux'][starIDX]
             
             if (not os.path.isfile(bandcorrImage)):
                 print("#### ERROR ### {:} not found".format(bandcorrImage))
