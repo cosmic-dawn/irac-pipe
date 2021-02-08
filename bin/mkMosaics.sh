@@ -36,7 +36,7 @@ PID=$(echo $WRK | cut -d\/ -f3)
 # get tmp dirs from build_mosaic log files
 if [ -e BuildMosaic_tmpDirs.lst ]; then
 	echo ">> get BuildMosaic temp dirs from local list"
-	tdirs=$(cat BuildMosaic_tmpDirs.lst)
+	tdirs=$(grep -v ^# BuildMosaic_tmpDirs.lst)
 else
 	echo ">> get BuildMosaic temp dirs from build_mosaic logfiles"
 	nn=$(ls mosaics.files/build_mosaic_ch?.log | wc -l)

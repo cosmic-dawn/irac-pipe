@@ -28,7 +28,7 @@ if [ -e supermopex.py ]; then
 	odir=$(grep 'OutputDIR  =' supermopex.py | cut -d\' -f2 | tr -d \/)
 	RAW=$(grep 'RawDataDir =' supermopex.py | cut -d\' -f2 | tr -d \/)
 else
-	echo "supermopex.py not found; quiting"  
+	echo "supermopex.py not found; quitting"  
 	exit 0
 fi
 
@@ -52,7 +52,6 @@ else
 	keep="F"
 fi
 
-exit
 echo ">> ...  ^C to quit if not correct"  
 sleep 10 #; exit
 

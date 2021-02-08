@@ -50,11 +50,12 @@
 # v2.32: torque outs back to $WRK (avoid interference) and more    (16.jun.20)
 # v2.33: with option to NOT subtract stars, and more               (29.jun.20)
 # v2.40: correct band-correction if not subtracting stars          (08.aug.20)
+# v2.41: in outliers, begin largest jobs first                     (05.sep.20)
 #-----------------------------------------------------------------------------
 #set -u        # exit if a variable is not defined
 #-----------------------------------------------------------------------------
 
-vers="irac.sh v2.40 (08.aug.20)"
+vers="irac.sh v2.41 (05.sep.20)"
 if [ $# -eq 0 ]; then
     echo "# SYNTAX:"
     echo "    irac.sh option (dry or auto)"
@@ -577,7 +578,8 @@ if [[ $1 =~ "subtract_st" ]]    || [ $1 == "substars" ] || [ $auto == "T" ]; the
     ec "# Job $module finished - unix walltime=$(wt)"
     
     # fix logfile
-    sed -i 's/ts\#\#/ts\n\#\#/' $module.out
+	sed -i -e 's/image\#\#/image\#\#\n/' -e 's/stars\#\# /stars\#\#\n /' $module.out
+	
     chk_outputs 
     nbeg=$(grep '## Begin ' $module.out | wc -l)
     nfin=$(grep '## Finis ' $module.out | wc -l)
@@ -842,7 +844,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
         Nfram=$(sed "${nline}q;d" $tlf | awk '{print $4}')
 
 		ppn=$((8+$Nfram/5000))
-		mem="$((4 + $Nfram / 1000))"
+		mem="$((5 + $Nfram / 1000))"
         wtm="$((3 + $Nfram / 1000)):00:00"
         sed -e "s|@WRK@|"$WRK"|g" -e "s|@INFO@|$info|g"  -e "s|@PID@|"$PID"|g"  \
             -e "s|@JOB@|"$j"|g"   -e "s|@PPN@|$ppn|g"    -e "s|@WTIME@|${wtm}|g"  \
@@ -853,8 +855,11 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
             awk '{printf "# job %3d: tile %3d ch %1d with %5d frames ==> %-15s ppn: %2d, wt %2d hr, mem %2d GB\n", 
                     $1,$2,$3,$4,$5,$6,$7,$8}' | \
             tee -a outliers.info
-        echo "qsub $outmodule; sleep 2" >> run.outliers
+#        echo "qsub $outmodule; sleep 2" >> run.outliers  # ... now built below
     done
+	# build run.outliers from outliers.info so as to begin largest jobs first:
+	sort -nrk9 outliers.info | cut -c44-66 > run.outliers
+	sed -i -e 's/==>/qsub/'  -e 's/ppn/; sleep 2/' run.outliers
     # check modules
     nmod=$(ls  outliers_*.sh  | wc -l)  # ; echo $nmod
     nsub=$(cat run.outliers   | wc -l)  # ; echo $nsub
@@ -878,7 +883,7 @@ if [[ $1 =~ "find_out" ]]     || [[ $1 =~ "outli" ]]  || [ $auto == "T" ]; then
         ec "# WARNING: there are some submission errors - check submit_outliers.errs ... continuing"
     else
         ec "# All $nmod jobs submitted ok ..."
-        rm submit_outliers.errs
+        #rm submit_outliers.errs
     fi
     
     ec '# Begin wait loop -- wait for all outliers_* jobs to finish  --'
@@ -1076,7 +1081,6 @@ if [[ $1 =~ "build_mos" ]] || [ $1 == "mosaics" ] || [ $auto == "T" ]; then
         [ $ndone -eq $nsub ] && break
         sleep 30
     done
-	mv ${module}_ch?.out .
     chmod 644 ${module}_ch?.out
     for f in ${module}_ch?.out; do
         ec "# Job $f finished - PBS $(grep RESOURCESUSED $f | cut -d\, -f4)"
